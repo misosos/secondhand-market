@@ -7,12 +7,17 @@ import type { AuthTokens, PublicUser } from "@secondhand/types";
 import { AccountStatus } from "@prisma/client";
 import { PrismaService } from "../../infra/prisma/prisma.service";
 import { RedisService } from "../../infra/redis/redis.service";
-import { refreshTokenKey } from "../../common/utils/redis-keys";
+import { loginFailKey, loginLockKey, refreshTokenKey } from "../../common/utils/redis-keys";
 import { isUniqueConstraintError } from "../../common/utils/prisma-errors";
 import { JwtPayload } from "../../common/interfaces/jwt-payload.interface";
 import { UserService } from "../user/user.service";
 import { SignupDto } from "./dto/signup.dto";
-import { BCRYPT_SALT_ROUNDS } from "./auth.constants";
+import {
+  BCRYPT_SALT_ROUNDS,
+  LOGIN_FAIL_THRESHOLD,
+  LOGIN_FAIL_WINDOW_MS,
+  LOGIN_LOCK_DURATION_MS,
+} from "./auth.constants";
 
 @Injectable()
 export class AuthService {
@@ -49,15 +54,43 @@ export class AuthService {
       throw new UnauthorizedException("Invalid username or password");
     }
 
+    if (await this.redisService.client.exists(loginLockKey(username))) {
+      throw new UnauthorizedException("Too many failed attempts. Try again later.");
+    }
+
     const user = await this.userService.findActiveByUsername(username);
-    if (!user || !(await bcrypt.compare(password, user.password))) {
+    const passwordOk = user ? await bcrypt.compare(password, user.password) : false;
+    if (!user || !passwordOk) {
+      await this.registerFailedLogin(username);
       throw new UnauthorizedException("Invalid username or password");
     }
+
+    // Correct password proves this wasn't a brute-force guess, regardless
+    // of what happens next (e.g. the dormant check below) — clear the
+    // counter so a legitimate user isn't left one attempt away from
+    // locking themselves out.
+    await this.clearFailedLogins(username);
+
     if (user.status === AccountStatus.DORMANT) {
       throw new ForbiddenException("Dormant accounts cannot log in");
     }
 
     return this.userService.toPublicUser(user);
+  }
+
+  private async registerFailedLogin(username: string): Promise<void> {
+    const key = loginFailKey(username);
+    const fails = await this.redisService.client.incr(key);
+    if (fails === 1) {
+      await this.redisService.client.pexpire(key, LOGIN_FAIL_WINDOW_MS);
+    }
+    if (fails >= LOGIN_FAIL_THRESHOLD) {
+      await this.redisService.client.set(loginLockKey(username), "1", "PX", LOGIN_LOCK_DURATION_MS);
+    }
+  }
+
+  private async clearFailedLogins(username: string): Promise<void> {
+    await this.redisService.client.del(loginFailKey(username), loginLockKey(username));
   }
 
   login(user: PublicUser): Promise<AuthTokens> {

@@ -9,13 +9,14 @@ import { AuthService } from "./auth.service";
 import { PrismaService } from "../../infra/prisma/prisma.service";
 import { RedisService } from "../../infra/redis/redis.service";
 import { UserService } from "../user/user.service";
+import { LOGIN_FAIL_THRESHOLD } from "./auth.constants";
 
 jest.mock("bcrypt");
 
 describe("AuthService", () => {
   let service: AuthService;
   let prisma: { user: { create: jest.Mock } };
-  let redisClient: { get: jest.Mock; set: jest.Mock; del: jest.Mock };
+  let redisClient: { get: jest.Mock; set: jest.Mock; del: jest.Mock; exists: jest.Mock; incr: jest.Mock; pexpire: jest.Mock };
   let userService: {
     findActiveByUsername: jest.Mock;
     findActiveById: jest.Mock;
@@ -25,7 +26,14 @@ describe("AuthService", () => {
 
   beforeEach(async () => {
     prisma = { user: { create: jest.fn() } };
-    redisClient = { get: jest.fn(), set: jest.fn(), del: jest.fn() };
+    redisClient = {
+      get: jest.fn(),
+      set: jest.fn(),
+      del: jest.fn(),
+      exists: jest.fn().mockResolvedValue(0),
+      incr: jest.fn().mockResolvedValue(1),
+      pexpire: jest.fn(),
+    };
     userService = {
       findActiveByUsername: jest.fn(),
       findActiveById: jest.fn(),
@@ -118,6 +126,46 @@ describe("AuthService", () => {
       await expect(service.validateUser("alice", "wrong")).rejects.toThrow(UnauthorizedException);
     });
 
+    it("rejects immediately when the account is locked, without touching the db or bcrypt", async () => {
+      redisClient.exists.mockResolvedValue(1);
+
+      await expect(service.validateUser("alice", "password123")).rejects.toThrow(UnauthorizedException);
+      expect(userService.findActiveByUsername).not.toHaveBeenCalled();
+      expect(bcrypt.compare).not.toHaveBeenCalled();
+    });
+
+    it("locks the account after the failure threshold is reached", async () => {
+      userService.findActiveByUsername.mockResolvedValue({
+        id: "u1",
+        password: "hashed-value",
+        status: AccountStatus.ACTIVE,
+      });
+      (bcrypt.compare as jest.Mock).mockResolvedValue(false);
+      redisClient.incr.mockResolvedValue(LOGIN_FAIL_THRESHOLD);
+
+      await expect(service.validateUser("alice", "wrong")).rejects.toThrow(UnauthorizedException);
+
+      expect(redisClient.set).toHaveBeenCalledWith(
+        "login:lock:alice",
+        expect.any(String),
+        "PX",
+        expect.any(Number),
+      );
+    });
+
+    it("does not lock the account before the failure threshold is reached", async () => {
+      userService.findActiveByUsername.mockResolvedValue({
+        id: "u1",
+        password: "hashed-value",
+        status: AccountStatus.ACTIVE,
+      });
+      (bcrypt.compare as jest.Mock).mockResolvedValue(false);
+      redisClient.incr.mockResolvedValue(LOGIN_FAIL_THRESHOLD - 1);
+
+      await expect(service.validateUser("alice", "wrong")).rejects.toThrow(UnauthorizedException);
+      expect(redisClient.set).not.toHaveBeenCalled();
+    });
+
     it("rejects a dormant account even with the correct password", async () => {
       userService.findActiveByUsername.mockResolvedValue({
         id: "u1",
@@ -143,6 +191,22 @@ describe("AuthService", () => {
       const result = await service.validateUser("alice", "password123");
       expect(result).toMatchObject({ id: "u1", username: "alice" });
       expect(result).not.toHaveProperty("password");
+    });
+
+    it("clears any accumulated failed-login count on success", async () => {
+      userService.findActiveByUsername.mockResolvedValue({
+        id: "u1",
+        username: "alice",
+        password: "hashed-value",
+        bio: null,
+        status: AccountStatus.ACTIVE,
+        createdAt: new Date(),
+      });
+      (bcrypt.compare as jest.Mock).mockResolvedValue(true);
+
+      await service.validateUser("alice", "password123");
+
+      expect(redisClient.del).toHaveBeenCalledWith("login:fails:alice", "login:lock:alice");
     });
   });
 
