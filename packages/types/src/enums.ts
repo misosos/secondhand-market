@@ -6,6 +6,11 @@ export enum AccountStatus {
   DORMANT = "DORMANT",
 }
 
+export enum Role {
+  USER = "USER",
+  ADMIN = "ADMIN",
+}
+
 export enum ProductStatus {
   ACTIVE = "ACTIVE",
   BLOCKED = "BLOCKED",

@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { Role } from "@secondhand/types";
 import { useAuth } from "@/features/auth/useAuth";
 import styles from "./NavBar.module.css";
 
@@ -19,6 +20,7 @@ export function NavBar() {
               <Link href="/products/new">상품 등록</Link>
               <Link href="/chat">채팅</Link>
               <Link href="/mypage">마이페이지</Link>
+              {user.role === Role.ADMIN && <Link href="/admin/reports">관리자</Link>}
               <button className={styles.logoutButton} onClick={() => logout()}>
                 로그아웃
               </button>

@@ -1,4 +1,4 @@
-import { AccountStatus } from "./enums";
+import { AccountStatus, Role } from "./enums";
 
 // Never includes `password`. This is the shape the API is allowed to return.
 export interface PublicUser {
@@ -6,6 +6,7 @@ export interface PublicUser {
   username: string;
   bio: string | null;
   status: AccountStatus;
+  role: Role;
   createdAt: string;
 }
 

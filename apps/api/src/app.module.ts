@@ -14,6 +14,7 @@ import { UserModule } from "./modules/user/user.module";
 import { ProductModule } from "./modules/product/product.module";
 import { ReportModule } from "./modules/report/report.module";
 import { ChatModule } from "./modules/chat/chat.module";
+import { AdminModule } from "./modules/admin/admin.module";
 
 @Module({
   imports: [
@@ -41,6 +42,7 @@ import { ChatModule } from "./modules/chat/chat.module";
     ProductModule,
     ReportModule,
     ChatModule,
+    AdminModule,
   ],
   controllers: [AppController],
   providers: [

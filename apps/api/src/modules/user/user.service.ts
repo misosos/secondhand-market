@@ -1,7 +1,7 @@
 import { Injectable, NotFoundException, UnauthorizedException } from "@nestjs/common";
 import * as bcrypt from "bcrypt";
 import type { User } from "@prisma/client";
-import type { AccountStatus, ChangePasswordRequest, PublicUser, UpdateProfileRequest } from "@secondhand/types";
+import type { AccountStatus, ChangePasswordRequest, PublicUser, Role, UpdateProfileRequest } from "@secondhand/types";
 import { PrismaService } from "../../infra/prisma/prisma.service";
 import { RedisService } from "../../infra/redis/redis.service";
 import { refreshTokenKey } from "../../common/utils/redis-keys";
@@ -59,6 +59,7 @@ export class UserService {
       // Prisma's generated AccountStatus enum and @secondhand/types's are
       // distinct TS types with identical string values at runtime.
       status: user.status as unknown as AccountStatus,
+      role: user.role as unknown as Role,
       createdAt: user.createdAt.toISOString(),
     };
   }

@@ -12,6 +12,11 @@ enum AccountStatus {
   DORMANT
 }
 
+enum Role {
+  USER
+  ADMIN
+}
+
 enum ProductStatus {
   ACTIVE
   BLOCKED
@@ -35,6 +40,7 @@ model User {
   password    String
   bio         String?       @db.Text
   status      AccountStatus @default(ACTIVE)
+  role        Role          @default(USER)
   reportCount Int           @default(0)
   createdAt   DateTime      @default(now())
   updatedAt   DateTime      @updatedAt
