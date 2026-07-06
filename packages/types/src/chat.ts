@@ -33,5 +33,6 @@ export const CHAT_EVENTS = {
   NEW_MESSAGE: "chat:new",
   JOIN_ROOM: "chat:join",
   REQUEST_HISTORY: "chat:history",
+  LIST_ROOMS: "chat:listRooms",
   ERROR: "chat:error",
 } as const;

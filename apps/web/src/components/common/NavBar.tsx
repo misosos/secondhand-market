@@ -17,6 +17,7 @@ export function NavBar() {
           {!isLoading && user && (
             <>
               <Link href="/products/new">상품 등록</Link>
+              <Link href="/chat">채팅</Link>
               <Link href="/mypage">마이페이지</Link>
               <button className={styles.logoutButton} onClick={() => logout()}>
                 로그아웃

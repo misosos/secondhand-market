@@ -86,6 +86,11 @@ export class ChatGateway implements OnGatewayConnection {
     return this.chatService.getHistory(userId, dto);
   }
 
+  @SubscribeMessage(CHAT_EVENTS.LIST_ROOMS)
+  handleListRooms(@ConnectedSocket() client: Socket) {
+    return this.chatService.listRooms(this.userId(client));
+  }
+
   private userId(client: Socket): string {
     return (client.data.user as JwtPayload).sub;
   }

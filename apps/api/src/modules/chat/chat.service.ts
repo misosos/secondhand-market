@@ -74,6 +74,45 @@ export class ChatService {
     return this.toMessageDto(message);
   }
 
+  async listRooms(userId: string): Promise<ChatRoomDto[]> {
+    const rooms = await this.prisma.chatRoom.findMany({
+      where: { isGlobal: false, members: { some: { userId } } },
+      include: {
+        members: true,
+        messages: { orderBy: { createdAt: "desc" }, take: 1 },
+      },
+    });
+
+    // ChatMember has no `user` relation (see schema), so peer usernames
+    // have to be resolved via a separate batched lookup rather than an
+    // include.
+    const peerIds = rooms
+      .map((room) => room.members.find((member) => member.userId !== userId)?.userId)
+      .filter((id): id is string => !!id);
+    const peers = await this.prisma.user.findMany({ where: { id: { in: peerIds } } });
+    const peerById = new Map(peers.map((peer) => [peer.id, peer]));
+
+    return rooms
+      .map((room) => {
+        const peerId = room.members.find((member) => member.userId !== userId)?.userId;
+        const peer = peerId ? peerById.get(peerId) : undefined;
+        const [lastMessage] = room.messages;
+        return {
+          dto: {
+            id: room.id,
+            isGlobal: room.isGlobal,
+            peer: peer ? { id: peer.id, username: peer.username } : undefined,
+            lastMessage: lastMessage ? this.toMessageDto(lastMessage) : undefined,
+          },
+          // Most recently active conversation first; rooms with no
+          // messages yet fall back to room creation time.
+          sortKey: (lastMessage?.createdAt ?? room.createdAt).getTime(),
+        };
+      })
+      .sort((a, b) => b.sortKey - a.sortKey)
+      .map(({ dto }) => dto);
+  }
+
   async getHistory(userId: string, query: ChatHistoryQuery): Promise<CursorPaginationResult<ChatMessageDto>> {
     await this.assertActive(userId);
     await this.assertMember(query.roomId, userId);

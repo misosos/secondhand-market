@@ -13,6 +13,8 @@ describe("ChatService", () => {
     $transaction: jest.Mock;
     chatMember: { findUnique: jest.Mock };
     chatMessage: { create: jest.Mock; findMany: jest.Mock };
+    chatRoom: { findMany: jest.Mock };
+    user: { findMany: jest.Mock };
   };
   let tx: { $executeRaw: jest.Mock; chatRoom: { findFirst: jest.Mock; create: jest.Mock } };
   let redisClient: { incr: jest.Mock; pexpire: jest.Mock };
@@ -29,6 +31,8 @@ describe("ChatService", () => {
       $transaction: jest.fn((callback: (tx: unknown) => unknown) => callback(tx)),
       chatMember: { findUnique: jest.fn() },
       chatMessage: { create: jest.fn(), findMany: jest.fn() },
+      chatRoom: { findMany: jest.fn() },
+      user: { findMany: jest.fn() },
     };
     redisClient = { incr: jest.fn(), pexpire: jest.fn() };
     userService = { findActiveById: jest.fn() };
@@ -181,6 +185,50 @@ describe("ChatService", () => {
 
       expect(result.items).toHaveLength(3);
       expect(result.nextCursor).not.toBeNull();
+    });
+  });
+
+  describe("listRooms", () => {
+    it("orders rooms by last message time, newest first, falling back to room creation time", async () => {
+      const older = new Date("2026-01-01T00:00:00Z");
+      const newer = new Date("2026-01-02T00:00:00Z");
+      const newest = new Date("2026-01-03T00:00:00Z");
+
+      prisma.chatRoom.findMany.mockResolvedValue([
+        {
+          id: "room-old",
+          isGlobal: false,
+          createdAt: older,
+          members: [{ roomId: "room-old", userId: "u1" }, { roomId: "room-old", userId: "u2" }],
+          messages: [{ id: "m1", roomId: "room-old", senderId: "u2", content: "hi", createdAt: older }],
+        },
+        {
+          id: "room-new",
+          isGlobal: false,
+          createdAt: newer,
+          members: [{ roomId: "room-new", userId: "u1" }, { roomId: "room-new", userId: "u3" }],
+          messages: [{ id: "m2", roomId: "room-new", senderId: "u3", content: "hey", createdAt: newer }],
+        },
+        {
+          id: "room-empty",
+          isGlobal: false,
+          createdAt: newest,
+          members: [{ roomId: "room-empty", userId: "u1" }, { roomId: "room-empty", userId: "u4" }],
+          messages: [],
+        },
+      ]);
+      prisma.user.findMany.mockResolvedValue([
+        { id: "u2", username: "u2" },
+        { id: "u3", username: "u3" },
+        { id: "u4", username: "u4" },
+      ]);
+
+      const rooms = await service.listRooms("u1");
+
+      expect(rooms.map((r) => r.id)).toEqual(["room-empty", "room-new", "room-old"]);
+      expect(rooms[1].peer).toEqual({ id: "u3", username: "u3" });
+      expect(rooms[1].lastMessage).toMatchObject({ id: "m2", content: "hey" });
+      expect(rooms[0].lastMessage).toBeUndefined();
     });
   });
 });
