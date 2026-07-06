@@ -1,0 +1,122 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum AccountStatus {
+  ACTIVE
+  DORMANT
+}
+
+enum ProductStatus {
+  ACTIVE
+  BLOCKED
+  SOLD
+}
+
+enum ReportTargetType {
+  USER
+  PRODUCT
+}
+
+enum ReportStatus {
+  PENDING
+  RESOLVED
+  REJECTED
+}
+
+model User {
+  id          String        @id @default(uuid())
+  username    String        @unique
+  password    String
+  bio         String?       @db.Text
+  status      AccountStatus @default(ACTIVE)
+  reportCount Int           @default(0)
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+  deletedAt   DateTime?
+
+  products    Product[]
+  reportsMade Report[]      @relation("Reporter")
+  reportsGot  Report[]      @relation("ReportedUser")
+  messages    ChatMessage[]
+
+  @@index([status])
+}
+
+model Product {
+  id          String         @id @default(uuid())
+  name        String
+  description String         @db.Text
+  price       Int
+  status      ProductStatus  @default(ACTIVE)
+  reportCount Int            @default(0)
+  sellerId    String
+  seller      User           @relation(fields: [sellerId], references: [id])
+  images      ProductImage[]
+  reportsGot  Report[]       @relation("ReportedProduct")
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+  deletedAt   DateTime?
+
+  @@index([status, createdAt])
+  @@index([sellerId])
+}
+
+model ProductImage {
+  id        String  @id @default(uuid())
+  url       String
+  sortOrder Int     @default(0)
+  productId String
+  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+}
+
+model Report {
+  id         String           @id @default(uuid())
+  reporterId String
+  reporter   User             @relation("Reporter", fields: [reporterId], references: [id])
+  targetType ReportTargetType
+  reason     String           @db.Text
+  status     ReportStatus     @default(PENDING)
+  createdAt  DateTime         @default(now())
+
+  targetUserId    String?
+  targetUser      User?    @relation("ReportedUser", fields: [targetUserId], references: [id])
+  targetProductId String?
+  targetProduct   Product? @relation("ReportedProduct", fields: [targetProductId], references: [id])
+
+  @@unique([reporterId, targetUserId])
+  @@unique([reporterId, targetProductId])
+}
+
+model ChatRoom {
+  id        String        @id @default(uuid())
+  isGlobal  Boolean       @default(false)
+  createdAt DateTime      @default(now())
+  members   ChatMember[]
+  messages  ChatMessage[]
+}
+
+model ChatMember {
+  roomId String
+  userId String
+  room   ChatRoom @relation(fields: [roomId], references: [id])
+
+  @@id([roomId, userId])
+}
+
+model ChatMessage {
+  id        String   @id @default(uuid())
+  roomId    String
+  senderId  String
+  content   String   @db.Text
+  createdAt DateTime @default(now())
+  room      ChatRoom @relation(fields: [roomId], references: [id])
+  sender    User     @relation(fields: [senderId], references: [id])
+
+  @@index([roomId, createdAt])
+}

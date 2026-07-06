@@ -1,0 +1,22 @@
+.section {
+  max-width: 420px;
+  margin-bottom: 40px;
+}
+
+.sectionTitle {
+  font-size: 16px;
+  font-weight: 700;
+  margin-bottom: 12px;
+}
+
+.meta {
+  color: var(--color-muted);
+  font-size: 13px;
+  margin-bottom: 20px;
+}
+
+.success {
+  color: #16a34a;
+  font-size: 14px;
+  margin: 0 0 14px;
+}

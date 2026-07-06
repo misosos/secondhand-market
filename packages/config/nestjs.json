@@ -1,0 +1,21 @@
+{
+  "extends": "./base.json",
+  "compilerOptions": {
+    "module": "commonjs",
+    "declaration": true,
+    "removeComments": true,
+    "emitDecoratorMetadata": true,
+    "experimentalDecorators": true,
+    "allowSyntheticDefaultImports": true,
+    "target": "ES2022",
+    "sourceMap": true,
+    "incremental": true,
+    "skipLibCheck": true,
+    "strictBindCallApply": true,
+    "noFallthroughCasesInSwitch": false,
+    // class-validator DTOs are never constructed with `new` (ValidationPipe
+    // uses plainToInstance), so requiring an initializer or `!` on every
+    // field is pure noise — off here, on everywhere else via base.json.
+    "strictPropertyInitialization": false
+  }
+}

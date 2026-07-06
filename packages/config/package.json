@@ -1,0 +1,12 @@
+{
+  "name": "@secondhand/config",
+  "version": "0.0.1",
+  "private": true,
+  "main": "index.js",
+  "files": [
+    "base.json",
+    "nestjs.json",
+    "nextjs.json",
+    "eslint-base.js"
+  ]
+}
