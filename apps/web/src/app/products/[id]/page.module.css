@@ -12,8 +12,7 @@
 
 .mainImageWrap {
   aspect-ratio: 1 / 1;
-  background: var(--color-bg);
-  border-radius: var(--radius);
+  background: var(--color-bg-elevated);
   overflow: hidden;
   margin-bottom: 8px;
 }
@@ -53,15 +52,49 @@
 }
 
 .name {
-  font-size: 22px;
-  font-weight: 800;
-  margin: 0 0 8px;
+  font-family: var(--font-display);
+  font-weight: 600;
+  letter-spacing: -0.015em;
+  font-size: 26px;
+  margin: 0 0 12px;
 }
 
-.price {
-  font-size: 20px;
+.pricePanel {
+  padding: 16px 18px;
+  background: var(--color-bg-elevated);
+  margin-bottom: 16px;
+}
+
+.priceRow {
+  display: flex;
+  justify-content: space-between;
+  padding: 5px 0;
+  font-size: 14px;
+  color: var(--color-muted);
+}
+
+.priceRow .val {
+  font-variant-numeric: tabular-nums;
+}
+
+.priceRowTotal {
+  display: flex;
+  justify-content: space-between;
+  padding-top: 8px;
+  margin-top: 4px;
+  border-top: 1px solid var(--hairline);
+  font-size: 19px;
   font-weight: 700;
-  margin: 0 0 16px;
+}
+
+.priceRowTotal .val {
+  font-variant-numeric: tabular-nums;
+}
+
+.priceFootnote {
+  font-size: 12px;
+  color: var(--color-muted);
+  margin-top: 8px;
 }
 
 .seller {

@@ -40,7 +40,10 @@ export default function ProductDetailPage({ params }: { params: { id: string } }
   return (
     <div className={styles.layout}>
       <div>
-        <div className={styles.mainImageWrap}>
+        <div
+          className={`${styles.mainImageWrap} squircle`}
+          style={{ viewTransitionName: `product-thumb-${product.id}` } as React.CSSProperties}
+        >
           {product.images[activeImage] && (
             <img className={styles.mainImage} src={product.images[activeImage].url} alt={product.name} />
           )}
@@ -61,8 +64,29 @@ export default function ProductDetailPage({ params }: { params: { id: string } }
       </div>
 
       <div>
-        <h1 className={styles.name}>{product.name}</h1>
-        <p className={styles.price}>{product.price.toLocaleString()}원</p>
+        <h1
+          className={styles.name}
+          style={{ viewTransitionName: `product-title-${product.id}` } as React.CSSProperties}
+        >
+          {product.name}
+        </h1>
+
+        <div className={`${styles.pricePanel} squircle`}>
+          <div className={styles.priceRow}>
+            <span>상품가</span>
+            <span className={styles.val}>{product.price.toLocaleString()}원</span>
+          </div>
+          <div className={styles.priceRow}>
+            <span>플랫폼 수수료</span>
+            <span className={styles.val}>0원</span>
+          </div>
+          <div className={styles.priceRowTotal}>
+            <span>최종 결제 금액</span>
+            <span className={styles.val}>{product.price.toLocaleString()}원</span>
+          </div>
+          <p className={styles.priceFootnote}>거래 확정 전 언제든 취소할 수 있어요 · 숨겨진 수수료 없음</p>
+        </div>
+
         <p className={styles.seller}>
           판매자:{" "}
           <Link href={`/users/${product.sellerId}`} style={{ textDecoration: "underline" }}>

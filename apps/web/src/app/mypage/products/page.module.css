@@ -14,8 +14,12 @@
   flex-direction: column;
   background: var(--color-surface);
   border: 1px solid var(--color-border);
-  border-radius: var(--radius);
   overflow: hidden;
+  transition: transform 0.45s var(--spring);
+}
+
+.card:hover {
+  transform: scale(1.015);
 }
 
 .thumbnailLink {

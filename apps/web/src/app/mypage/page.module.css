@@ -16,7 +16,7 @@
 }
 
 .success {
-  color: #16a34a;
+  color: var(--color-accent-secondary);
   font-size: 14px;
   margin: 0 0 14px;
 }

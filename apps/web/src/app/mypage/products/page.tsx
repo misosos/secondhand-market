@@ -56,7 +56,7 @@ export default function MyProductsPage() {
           const canOpen = product.status !== ProductStatus.BLOCKED;
 
           return (
-            <div key={product.id} className={styles.card}>
+            <div key={product.id} className={`${styles.card} squircle`}>
               {canOpen ? (
                 <Link href={`/products/${product.id}`} className={styles.thumbnailLink}>
                   <div className={styles.thumbnailWrap}>

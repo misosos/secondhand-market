@@ -35,7 +35,7 @@ export default function UserProfilePage({ params }: { params: { id: string } }) 
   const isSelf = currentUser?.id === profile.id;
 
   return (
-    <div className={styles.card}>
+    <div className={`${styles.card} squircle`}>
       <p className={styles.username}>{profile.username}</p>
       <p className={styles.meta}>가입일 {new Date(profile.createdAt).toLocaleDateString()}</p>
       <p className={styles.bio}>{profile.bio || "작성된 소개글이 없습니다."}</p>

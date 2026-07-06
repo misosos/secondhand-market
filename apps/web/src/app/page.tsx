@@ -23,6 +23,18 @@ export default function HomePage() {
 
   return (
     <div>
+      <div className={styles.hero}>
+        <div className={styles.heroInner}>
+          <span className="eyebrow">중고거래</span>
+          <h1 className={styles.heroHeadline}>
+            물건은 새롭게,
+            <br />
+            <b>발견</b>은 더 쉽게.
+          </h1>
+          <p className={styles.heroSub}>믿을 수 있는 이웃에게서, 필요했던 물건을 합리적인 가격에.</p>
+        </div>
+      </div>
+
       <form
         className={styles.toolbar}
         onSubmit={(e) => {
