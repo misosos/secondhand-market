@@ -1,11 +1,21 @@
 import type { ChatMessageDto } from "@secondhand/types";
 import styles from "./ChatMessageBubble.module.css";
 
-export function ChatMessageBubble({ message, isOwn }: { message: ChatMessageDto; isOwn: boolean }) {
+interface ChatMessageBubbleProps {
+  message: ChatMessageDto;
+  isOwn: boolean;
+  // DMs skip this: the peer's identity is already shown in the window
+  // header, since there are only ever two participants. The global room
+  // has many, so each bubble needs its own label.
+  showSender?: boolean;
+}
+
+export function ChatMessageBubble({ message, isOwn, showSender }: ChatMessageBubbleProps) {
   const time = new Date(message.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
 
   return (
     <div className={`${styles.row} ${isOwn ? styles.own : ""}`}>
+      {showSender && !isOwn && <span className={styles.sender}>{message.senderUsername}</span>}
       <div className={styles.bubble}>{message.content}</div>
       <span className={styles.time}>{time}</span>
     </div>

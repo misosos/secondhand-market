@@ -14,6 +14,7 @@ export interface ChatMessageDto {
   id: string;
   roomId: string;
   senderId: string;
+  senderUsername: string;
   content: string;
   createdAt: string;
 }
@@ -32,6 +33,7 @@ export const CHAT_EVENTS = {
   SEND_MESSAGE: "chat:send",
   NEW_MESSAGE: "chat:new",
   JOIN_ROOM: "chat:join",
+  JOIN_GLOBAL: "chat:joinGlobal",
   REQUEST_HISTORY: "chat:history",
   LIST_ROOMS: "chat:listRooms",
   ERROR: "chat:error",

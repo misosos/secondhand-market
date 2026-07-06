@@ -67,6 +67,13 @@ export class ChatGateway implements OnGatewayConnection {
     return room;
   }
 
+  @SubscribeMessage(CHAT_EVENTS.JOIN_GLOBAL)
+  async handleJoinGlobal(@ConnectedSocket() client: Socket) {
+    const room = await this.chatService.getGlobalRoom(this.userId(client));
+    await client.join(room.id);
+    return room;
+  }
+
   @SubscribeMessage(CHAT_EVENTS.SEND_MESSAGE)
   async handleSend(@ConnectedSocket() client: Socket, @MessageBody() dto: SendMessageDto) {
     const userId = this.userId(client);

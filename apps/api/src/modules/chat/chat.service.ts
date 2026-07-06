@@ -1,6 +1,6 @@
 import { Injectable } from "@nestjs/common";
 import { WsException } from "@nestjs/websockets";
-import { AccountStatus, ChatMessage } from "@prisma/client";
+import { AccountStatus, ChatMessage, ChatRoom } from "@prisma/client";
 import type { ChatHistoryQuery, ChatMessageDto, ChatRoomDto, CursorPaginationResult } from "@secondhand/types";
 import { PrismaService } from "../../infra/prisma/prisma.service";
 import { RedisService } from "../../infra/redis/redis.service";
@@ -64,14 +64,27 @@ export class ChatService {
 
   async sendMessage(senderId: string, roomId: string, content: string): Promise<ChatMessageDto> {
     await this.assertActive(senderId);
-    await this.assertMember(roomId, senderId);
+    const room = await this.getRoomOrThrow(roomId);
+    // The global room has no ChatMember rows — everyone active is
+    // implicitly a member — so membership only gets enforced for DMs.
+    if (!room.isGlobal) {
+      await this.assertMember(roomId, senderId);
+    }
     await this.assertNotRateLimited(senderId);
 
     const message = await this.prisma.chatMessage.create({
       data: { roomId, senderId, content },
+      include: { sender: true },
     });
 
     return this.toMessageDto(message);
+  }
+
+  async getGlobalRoom(userId: string): Promise<ChatRoomDto> {
+    await this.assertActive(userId);
+    const room = await this.prisma.chatRoom.findFirst({ where: { isGlobal: true } });
+    if (!room) throw new WsException("Global room is not configured");
+    return { id: room.id, isGlobal: true };
   }
 
   async listRooms(userId: string): Promise<ChatRoomDto[]> {
@@ -79,7 +92,7 @@ export class ChatService {
       where: { isGlobal: false, members: { some: { userId } } },
       include: {
         members: true,
-        messages: { orderBy: { createdAt: "desc" }, take: 1 },
+        messages: { orderBy: { createdAt: "desc" }, take: 1, include: { sender: true } },
       },
     });
 
@@ -115,7 +128,10 @@ export class ChatService {
 
   async getHistory(userId: string, query: ChatHistoryQuery): Promise<CursorPaginationResult<ChatMessageDto>> {
     await this.assertActive(userId);
-    await this.assertMember(query.roomId, userId);
+    const room = await this.getRoomOrThrow(query.roomId);
+    if (!room.isGlobal) {
+      await this.assertMember(query.roomId, userId);
+    }
 
     const limit = Math.min(query.limit ?? CHAT_HISTORY_DEFAULT_PAGE_SIZE, CHAT_HISTORY_MAX_PAGE_SIZE);
 
@@ -126,6 +142,7 @@ export class ChatService {
       },
       orderBy: [{ createdAt: "desc" }, { id: "desc" }],
       take: limit + 1,
+      include: { sender: true },
     });
 
     const hasNext = rows.length > limit;
@@ -143,6 +160,12 @@ export class ChatService {
     if (user.status === AccountStatus.DORMANT) {
       throw new WsException("Dormant accounts cannot use chat");
     }
+  }
+
+  private async getRoomOrThrow(roomId: string): Promise<ChatRoom> {
+    const room = await this.prisma.chatRoom.findUnique({ where: { id: roomId } });
+    if (!room) throw new WsException("Room not found");
+    return room;
   }
 
   private async assertMember(roomId: string, userId: string): Promise<void> {
@@ -165,11 +188,12 @@ export class ChatService {
     }
   }
 
-  private toMessageDto(message: ChatMessage): ChatMessageDto {
+  private toMessageDto(message: ChatMessage & { sender: { username: string } }): ChatMessageDto {
     return {
       id: message.id,
       roomId: message.roomId,
       senderId: message.senderId,
+      senderUsername: message.sender.username,
       content: message.content,
       createdAt: message.createdAt.toISOString(),
     };

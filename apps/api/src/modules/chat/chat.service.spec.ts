@@ -13,7 +13,7 @@ describe("ChatService", () => {
     $transaction: jest.Mock;
     chatMember: { findUnique: jest.Mock };
     chatMessage: { create: jest.Mock; findMany: jest.Mock };
-    chatRoom: { findMany: jest.Mock };
+    chatRoom: { findMany: jest.Mock; findUnique: jest.Mock; findFirst: jest.Mock };
     user: { findMany: jest.Mock };
   };
   let tx: { $executeRaw: jest.Mock; chatRoom: { findFirst: jest.Mock; create: jest.Mock } };
@@ -31,7 +31,7 @@ describe("ChatService", () => {
       $transaction: jest.fn((callback: (tx: unknown) => unknown) => callback(tx)),
       chatMember: { findUnique: jest.fn() },
       chatMessage: { create: jest.fn(), findMany: jest.fn() },
-      chatRoom: { findMany: jest.fn() },
+      chatRoom: { findMany: jest.fn(), findUnique: jest.fn(), findFirst: jest.fn() },
       user: { findMany: jest.fn() },
     };
     redisClient = { incr: jest.fn(), pexpire: jest.fn() };
@@ -101,6 +101,7 @@ describe("ChatService", () => {
   describe("sendMessage", () => {
     beforeEach(() => {
       userService.findActiveById.mockResolvedValue(activeUser("u1"));
+      prisma.chatRoom.findUnique.mockResolvedValue({ id: "room-1", isGlobal: false });
     });
 
     it("rejects a dormant sender before even checking membership", async () => {
@@ -108,6 +109,11 @@ describe("ChatService", () => {
 
       await expect(service.sendMessage("u1", "room-1", "hi")).rejects.toThrow(WsException);
       expect(prisma.chatMember.findUnique).not.toHaveBeenCalled();
+    });
+
+    it("rejects when the room doesn't exist", async () => {
+      prisma.chatRoom.findUnique.mockResolvedValue(null);
+      await expect(service.sendMessage("u1", "missing-room", "hi")).rejects.toThrow(WsException);
     });
 
     it("rejects a sender who isn't a member of the room", async () => {
@@ -124,10 +130,27 @@ describe("ChatService", () => {
         senderId: "u1",
         content: "hi",
         createdAt: new Date(),
+        sender: { username: "u1" },
       });
 
       const message = await service.sendMessage("u1", "room-1", "hi");
-      expect(message).toMatchObject({ id: "m1", roomId: "room-1", senderId: "u1", content: "hi" });
+      expect(message).toMatchObject({ id: "m1", roomId: "room-1", senderId: "u1", senderUsername: "u1", content: "hi" });
+    });
+
+    it("skips the membership check for the global room", async () => {
+      prisma.chatRoom.findUnique.mockResolvedValue({ id: "global-room", isGlobal: true });
+      redisClient.incr.mockResolvedValue(1);
+      prisma.chatMessage.create.mockResolvedValue({
+        id: "m1",
+        roomId: "global-room",
+        senderId: "u1",
+        content: "hi all",
+        createdAt: new Date(),
+        sender: { username: "u1" },
+      });
+
+      await expect(service.sendMessage("u1", "global-room", "hi all")).resolves.toBeDefined();
+      expect(prisma.chatMember.findUnique).not.toHaveBeenCalled();
     });
 
     it(`rejects the ${CHAT_RATE_LIMIT_PER_WINDOW + 1}th message within the same window`, async () => {
@@ -138,6 +161,7 @@ describe("ChatService", () => {
         senderId: "u1",
         content: "hi",
         createdAt: new Date(),
+        sender: { username: "u1" },
       });
 
       for (let i = 1; i <= CHAT_RATE_LIMIT_PER_WINDOW; i++) {
@@ -153,7 +177,13 @@ describe("ChatService", () => {
   describe("getHistory", () => {
     beforeEach(() => {
       userService.findActiveById.mockResolvedValue(activeUser("u1"));
+      prisma.chatRoom.findUnique.mockResolvedValue({ id: "room-1", isGlobal: false });
       prisma.chatMember.findUnique.mockResolvedValue({ roomId: "room-1", userId: "u1" });
+    });
+
+    it("rejects when the room doesn't exist", async () => {
+      prisma.chatRoom.findUnique.mockResolvedValue(null);
+      await expect(service.getHistory("u1", { roomId: "missing-room" })).rejects.toThrow(WsException);
     });
 
     it("rejects a non-member from reading history", async () => {
@@ -161,9 +191,18 @@ describe("ChatService", () => {
       await expect(service.getHistory("u1", { roomId: "room-1" })).rejects.toThrow(WsException);
     });
 
+    it("skips the membership check for the global room", async () => {
+      prisma.chatRoom.findUnique.mockResolvedValue({ id: "global-room", isGlobal: true });
+      prisma.chatMember.findUnique.mockResolvedValue(null);
+      prisma.chatMessage.findMany.mockResolvedValue([]);
+
+      await expect(service.getHistory("u1", { roomId: "global-room" })).resolves.toBeDefined();
+      expect(prisma.chatMember.findUnique).not.toHaveBeenCalled();
+    });
+
     it("reports no next page when fewer rows than the limit come back", async () => {
       prisma.chatMessage.findMany.mockResolvedValue([
-        { id: "m1", roomId: "room-1", senderId: "u1", content: "hi", createdAt: new Date() },
+        { id: "m1", roomId: "room-1", senderId: "u1", content: "hi", createdAt: new Date(), sender: { username: "u1" } },
       ]);
 
       const result = await service.getHistory("u1", { roomId: "room-1", limit: 30 });
@@ -178,6 +217,7 @@ describe("ChatService", () => {
         senderId: "u1",
         content: `msg ${i}`,
         createdAt: new Date(Date.now() - i * 1000),
+        sender: { username: "u1" },
       }));
       prisma.chatMessage.findMany.mockResolvedValue(rows); // 4 rows, limit 3 => hasNext
 
@@ -200,14 +240,18 @@ describe("ChatService", () => {
           isGlobal: false,
           createdAt: older,
           members: [{ roomId: "room-old", userId: "u1" }, { roomId: "room-old", userId: "u2" }],
-          messages: [{ id: "m1", roomId: "room-old", senderId: "u2", content: "hi", createdAt: older }],
+          messages: [
+            { id: "m1", roomId: "room-old", senderId: "u2", content: "hi", createdAt: older, sender: { username: "u2" } },
+          ],
         },
         {
           id: "room-new",
           isGlobal: false,
           createdAt: newer,
           members: [{ roomId: "room-new", userId: "u1" }, { roomId: "room-new", userId: "u3" }],
-          messages: [{ id: "m2", roomId: "room-new", senderId: "u3", content: "hey", createdAt: newer }],
+          messages: [
+            { id: "m2", roomId: "room-new", senderId: "u3", content: "hey", createdAt: newer, sender: { username: "u3" } },
+          ],
         },
         {
           id: "room-empty",
@@ -229,6 +273,27 @@ describe("ChatService", () => {
       expect(rooms[1].peer).toEqual({ id: "u3", username: "u3" });
       expect(rooms[1].lastMessage).toMatchObject({ id: "m2", content: "hey" });
       expect(rooms[0].lastMessage).toBeUndefined();
+    });
+  });
+
+  describe("getGlobalRoom", () => {
+    it("rejects a dormant caller", async () => {
+      userService.findActiveById.mockResolvedValue({ id: "u1", username: "u1", status: AccountStatus.DORMANT });
+      await expect(service.getGlobalRoom("u1")).rejects.toThrow(WsException);
+    });
+
+    it("throws if no global room has been seeded", async () => {
+      userService.findActiveById.mockResolvedValue(activeUser("u1"));
+      prisma.chatRoom.findFirst.mockResolvedValue(null);
+      await expect(service.getGlobalRoom("u1")).rejects.toThrow(WsException);
+    });
+
+    it("returns the seeded global room", async () => {
+      userService.findActiveById.mockResolvedValue(activeUser("u1"));
+      prisma.chatRoom.findFirst.mockResolvedValue({ id: "global-room", isGlobal: true });
+
+      const room = await service.getGlobalRoom("u1");
+      expect(room).toEqual({ id: "global-room", isGlobal: true });
     });
   });
 });

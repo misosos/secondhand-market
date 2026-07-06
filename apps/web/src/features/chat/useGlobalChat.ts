@@ -6,15 +6,14 @@ import { connectSocket, emitWithAck } from "@/lib/socket";
 import { useAuth } from "@/features/auth/useAuth";
 import { useChatRoom } from "./useChatRoom";
 
-// Opens (or reuses) a 1:1 DM with `peerId` and keeps `messages` in sync via
-// the room's Socket.io broadcast. `peerId: null` means "no chat open".
-export function useChat(peerId: string | null) {
+// Joins the single seeded global room that every active user shares.
+export function useGlobalChat() {
   const { user } = useAuth();
 
   const join = useCallback(() => {
     const socket = connectSocket();
-    return emitWithAck<ChatRoomDto>(socket, CHAT_EVENTS.JOIN_ROOM, { peerId });
-  }, [peerId]);
+    return emitWithAck<ChatRoomDto>(socket, CHAT_EVENTS.JOIN_GLOBAL, {});
+  }, []);
 
-  return useChatRoom(user && peerId ? peerId : null, join);
+  return useChatRoom(user ? "global" : null, join);
 }

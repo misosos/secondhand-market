@@ -12,6 +12,13 @@
   margin-left: auto;
 }
 
+.sender {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--color-muted);
+  margin-bottom: 2px;
+}
+
 .bubble {
   background: var(--color-bg);
   border: 1px solid var(--color-border);
