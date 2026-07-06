@@ -1,9 +1,6 @@
-"use client";
-
-import { useState } from "react";
+import Link from "next/link";
 import type { ReportTargetType } from "@secondhand/types";
 import { Button } from "@/components/common/Button";
-import { ReportModal } from "./ReportModal";
 
 interface ReportButtonProps {
   targetType: ReportTargetType;
@@ -12,14 +9,9 @@ interface ReportButtonProps {
 }
 
 export function ReportButton({ targetType, targetId, label = "신고" }: ReportButtonProps) {
-  const [isOpen, setIsOpen] = useState(false);
-
   return (
-    <>
-      <Button variant="danger" onClick={() => setIsOpen(true)}>
-        {label}
-      </Button>
-      {isOpen && <ReportModal targetType={targetType} targetId={targetId} onClose={() => setIsOpen(false)} />}
-    </>
+    <Link href={`/report?targetType=${targetType}&targetId=${targetId}`}>
+      <Button variant="danger">{label}</Button>
+    </Link>
   );
 }
