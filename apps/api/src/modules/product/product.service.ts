@@ -116,6 +116,18 @@ export class ProductService {
     };
   }
 
+  // Unlike list()/findDetail(), this deliberately includes BLOCKED/SOLD
+  // items — a seller managing their own listings needs to see why
+  // something disappeared from the public list, not just the live ones.
+  async listMine(sellerId: string): Promise<ProductSummary[]> {
+    const products = await this.prisma.product.findMany({
+      where: { sellerId, deletedAt: null },
+      orderBy: { createdAt: "desc" },
+      include: { images: { orderBy: { sortOrder: "asc" }, take: 1 } },
+    });
+    return products.map((p) => this.toSummary(p));
+  }
+
   private async findOwned(sellerId: string, productId: string): Promise<Product> {
     const product = await this.prisma.product.findFirst({ where: { id: productId, deletedAt: null } });
     if (!product) throw new NotFoundException("Product not found");

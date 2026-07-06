@@ -18,6 +18,7 @@ export function NavBar() {
           {!isLoading && user && (
             <>
               <Link href="/products/new">상품 등록</Link>
+              <Link href="/mypage/products">내 상품</Link>
               <Link href="/chat">채팅</Link>
               <Link href="/mypage">마이페이지</Link>
               {user.role === Role.ADMIN && <Link href="/admin/reports">관리자</Link>}

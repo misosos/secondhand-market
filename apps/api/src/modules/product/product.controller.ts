@@ -21,6 +21,12 @@ export class ProductController {
     return this.productService.list(query);
   }
 
+  // Declared before ':id' so 'products/mine' resolves here, not as id="mine".
+  @Get("mine")
+  listMine(@CurrentUser("sub") sellerId: string) {
+    return this.productService.listMine(sellerId);
+  }
+
   @Public()
   @Get(":id")
   getDetail(@Param("id") id: string) {
