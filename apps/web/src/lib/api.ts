@@ -5,29 +5,36 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000";
 const ACCESS_TOKEN_KEY = "secondhand.accessToken";
 const REFRESH_TOKEN_KEY = "secondhand.refreshToken";
 
-// Tokens live in localStorage rather than an httpOnly cookie: the API
+// Tokens live in sessionStorage rather than an httpOnly cookie: the API
 // issues them in the JSON response body (not Set-Cookie), so there's
 // nowhere else to put them without changing the confirmed auth contract.
 // Trade-off: vulnerable to XSS-based token theft in a way httpOnly cookies
 // aren't — acceptable for this MVP, worth revisiting before production.
+//
+// sessionStorage (not localStorage) deliberately: localStorage is shared
+// across every tab of the same origin, so logging into a second account in
+// another tab silently overwrote the first tab's token — both tabs would
+// then act as whichever account logged in last, scrambling chat sender
+// identity between them. sessionStorage is isolated per tab, so each tab
+// keeps its own logged-in account.
 export function getAccessToken(): string | null {
   if (typeof window === "undefined") return null;
-  return window.localStorage.getItem(ACCESS_TOKEN_KEY);
+  return window.sessionStorage.getItem(ACCESS_TOKEN_KEY);
 }
 
 export function getRefreshToken(): string | null {
   if (typeof window === "undefined") return null;
-  return window.localStorage.getItem(REFRESH_TOKEN_KEY);
+  return window.sessionStorage.getItem(REFRESH_TOKEN_KEY);
 }
 
 export function setTokens(tokens: AuthTokens): void {
-  window.localStorage.setItem(ACCESS_TOKEN_KEY, tokens.accessToken);
-  window.localStorage.setItem(REFRESH_TOKEN_KEY, tokens.refreshToken);
+  window.sessionStorage.setItem(ACCESS_TOKEN_KEY, tokens.accessToken);
+  window.sessionStorage.setItem(REFRESH_TOKEN_KEY, tokens.refreshToken);
 }
 
 export function clearTokens(): void {
-  window.localStorage.removeItem(ACCESS_TOKEN_KEY);
-  window.localStorage.removeItem(REFRESH_TOKEN_KEY);
+  window.sessionStorage.removeItem(ACCESS_TOKEN_KEY);
+  window.sessionStorage.removeItem(REFRESH_TOKEN_KEY);
 }
 
 export class ApiError extends Error {
