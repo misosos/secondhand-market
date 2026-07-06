@@ -1,4 +1,5 @@
 import { ArrayMaxSize, ArrayMinSize, IsArray, IsInt, IsOptional, IsString, IsUrl, Length, Max, Min } from "class-validator";
+import { SanitizeHtml } from "../../../common/decorators/sanitize-html.decorator";
 import { MAX_IMAGES_PER_PRODUCT, MAX_PRICE_WON } from "../product.constants";
 
 const URL_OPTIONS = { require_tld: false, protocols: ["http", "https"], require_protocol: true };
@@ -7,11 +8,13 @@ export class UpdateProductDto {
   @IsOptional()
   @IsString()
   @Length(1, 100)
+  @SanitizeHtml()
   name?: string;
 
   @IsOptional()
   @IsString()
   @Length(1, 5000)
+  @SanitizeHtml()
   description?: string;
 
   @IsOptional()
