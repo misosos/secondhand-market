@@ -1,4 +1,5 @@
 import "reflect-metadata";
+import cookieParser from "cookie-parser";
 import { NestFactory, Reflector } from "@nestjs/core";
 import { ClassSerializerInterceptor, ValidationPipe } from "@nestjs/common";
 import { AppModule } from "./app.module";
@@ -11,6 +12,12 @@ async function bootstrap() {
     origin: process.env.CORS_ORIGIN ?? "http://localhost:3000",
     credentials: true,
   });
+
+  // Auth tokens live in httpOnly cookies (see AuthController) — needed to
+  // read them back off incoming requests. CSRF checking (CsrfGuard) is
+  // registered as a global Nest guard instead of Express middleware so its
+  // rejections flow through the normal exception filter.
+  app.use(cookieParser());
 
   // Strips unknown fields and coerces primitives so every module can trust
   // its DTOs without re-validating in the service layer.

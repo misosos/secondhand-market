@@ -2,7 +2,7 @@
 
 import { createContext, useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 import type { LoginResponse, PublicUser } from "@secondhand/types";
-import { api, clearTokens, getAccessToken, setTokens } from "@/lib/api";
+import { api, hasSession } from "@/lib/api";
 import { disconnectSocket } from "@/lib/socket";
 
 export interface AuthContextValue {
@@ -21,7 +21,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
 
   const refreshUser = useCallback(async () => {
-    if (!getAccessToken()) {
+    if (!hasSession()) {
       setUser(null);
       return;
     }
@@ -31,7 +31,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     } catch {
       // Access + refresh both dead — quietly fall back to signed-out
       // instead of bouncing the visitor off whatever page they're on.
-      clearTokens();
       setUser(null);
     }
   }, []);
@@ -43,7 +42,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const login = useCallback(async (username: string, password: string) => {
     const result = await api.post<LoginResponse>("/auth/login", { username, password }, { skipAuth: true });
-    setTokens(result);
     setUser(result.user);
     return result.user;
   }, []);
@@ -59,7 +57,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // Already logged out server-side or token expired — proceed to
       // clear local state regardless.
     }
-    clearTokens();
     disconnectSocket();
     setUser(null);
   }, []);

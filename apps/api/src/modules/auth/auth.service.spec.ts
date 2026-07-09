@@ -260,7 +260,12 @@ describe("AuthService", () => {
 
       const result = await service.refresh(token);
 
-      expect(result).toEqual({ accessToken: "new-access-token", refreshToken: "new-refresh-token" });
+      expect(result).toEqual({
+        accessToken: "new-access-token",
+        accessTokenExpiresAt: expect.any(Date),
+        refreshToken: "new-refresh-token",
+        refreshTokenExpiresAt: expect.any(Date),
+      });
       expect(redisClient.set).toHaveBeenCalledWith("refresh:u1", expect.any(String), "PX", expect.any(Number));
       // The newly stored hash must correspond to the *new* refresh token,
       // not the one that was just consumed.

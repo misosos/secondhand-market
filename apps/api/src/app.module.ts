@@ -9,6 +9,7 @@ import { InfraModule } from "./infra/infra.module";
 import { RedisModule } from "./infra/redis/redis.module";
 import { RedisThrottlerStorage } from "./infra/redis/redis-throttler.storage";
 import { AllExceptionsFilter } from "./common/filters/all-exceptions.filter";
+import { CsrfGuard } from "./common/guards/csrf.guard";
 import { AuthModule } from "./modules/auth/auth.module";
 import { UserModule } from "./modules/user/user.module";
 import { ProductModule } from "./modules/product/product.module";
@@ -50,6 +51,7 @@ import { TransactionModule } from "./modules/transaction/transaction.module";
   providers: [
     AppService,
     { provide: APP_GUARD, useClass: ThrottlerGuard },
+    { provide: APP_GUARD, useClass: CsrfGuard },
     { provide: APP_FILTER, useClass: AllExceptionsFilter },
   ],
 })

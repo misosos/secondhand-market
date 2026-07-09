@@ -1,40 +1,26 @@
-import type { AuthTokens } from "@secondhand/types";
-
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000";
 
-const ACCESS_TOKEN_KEY = "secondhand.accessToken";
-const REFRESH_TOKEN_KEY = "secondhand.refreshToken";
+const CSRF_COOKIE = "csrfToken";
+const CSRF_HEADER = "X-CSRF-Token";
+const MUTATING_METHODS = new Set(["POST", "PUT", "PATCH", "DELETE"]);
 
-// Tokens live in sessionStorage rather than an httpOnly cookie: the API
-// issues them in the JSON response body (not Set-Cookie), so there's
-// nowhere else to put them without changing the confirmed auth contract.
-// Trade-off: vulnerable to XSS-based token theft in a way httpOnly cookies
-// aren't — acceptable for this MVP, worth revisiting before production.
-//
-// sessionStorage (not localStorage) deliberately: localStorage is shared
-// across every tab of the same origin, so logging into a second account in
-// another tab silently overwrote the first tab's token — both tabs would
-// then act as whichever account logged in last, scrambling chat sender
-// identity between them. sessionStorage is isolated per tab, so each tab
-// keeps its own logged-in account.
-export function getAccessToken(): string | null {
-  if (typeof window === "undefined") return null;
-  return window.sessionStorage.getItem(ACCESS_TOKEN_KEY);
+// Auth lives in httpOnly cookies now (see apps/api's AuthController) —
+// there's no token for JS to hold, read, or clear anymore. The CSRF cookie
+// is the one deliberate exception: it's not httpOnly specifically so this
+// can read it back and echo it as a header (double-submit pattern).
+function getCsrfToken(): string | null {
+  if (typeof document === "undefined") return null;
+  const match = document.cookie.match(new RegExp(`(?:^|;\\s*)${CSRF_COOKIE}=([^;]*)`));
+  return match ? decodeURIComponent(match[1]) : null;
 }
 
-export function getRefreshToken(): string | null {
-  if (typeof window === "undefined") return null;
-  return window.sessionStorage.getItem(REFRESH_TOKEN_KEY);
-}
-
-export function setTokens(tokens: AuthTokens): void {
-  window.sessionStorage.setItem(ACCESS_TOKEN_KEY, tokens.accessToken);
-  window.sessionStorage.setItem(REFRESH_TOKEN_KEY, tokens.refreshToken);
-}
-
-export function clearTokens(): void {
-  window.sessionStorage.removeItem(ACCESS_TOKEN_KEY);
-  window.sessionStorage.removeItem(REFRESH_TOKEN_KEY);
+// The CSRF cookie is set alongside the (httpOnly, JS-invisible) auth
+// cookies on every login/refresh and cleared on logout, so its presence is
+// a reasonable client-side proxy for "there's probably an active session" —
+// used only to skip a pointless /users/me call for a visitor who's
+// obviously signed out, not as an actual auth check.
+export function hasSession(): boolean {
+  return getCsrfToken() !== null;
 }
 
 export class ApiError extends Error {
@@ -50,43 +36,39 @@ export class ApiError extends Error {
 interface RequestOptions {
   method?: string;
   body?: unknown;
+  // Only affects the 401-triggered refresh-and-retry below — the auth
+  // bootstrap endpoints (login/signup) are hit while there may be no valid
+  // session yet, so a 401 from them is a real failure, not "access token
+  // expired, go refresh."
   skipAuth?: boolean;
 }
 
 let refreshPromise: Promise<boolean> | null = null;
 
 async function refreshAccessToken(): Promise<boolean> {
-  const refreshToken = getRefreshToken();
-  if (!refreshToken) return false;
-
   try {
     const res = await fetch(`${API_URL}/api/auth/refresh`, {
       method: "POST",
+      credentials: "include",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ refreshToken }),
     });
-    if (!res.ok) {
-      clearTokens();
-      return false;
-    }
-    const tokens = (await res.json()) as AuthTokens;
-    setTokens(tokens);
-    return true;
+    return res.ok;
   } catch {
-    clearTokens();
     return false;
   }
 }
 
 async function request<T>(path: string, options: RequestOptions = {}, isRetry = false): Promise<T> {
+  const method = options.method ?? "GET";
   const headers: Record<string, string> = { "Content-Type": "application/json" };
-  const token = getAccessToken();
-  if (token && !options.skipAuth) {
-    headers.Authorization = `Bearer ${token}`;
+  if (MUTATING_METHODS.has(method)) {
+    const csrfToken = getCsrfToken();
+    if (csrfToken) headers[CSRF_HEADER] = csrfToken;
   }
 
   const res = await fetch(`${API_URL}/api${path}`, {
-    method: options.method ?? "GET",
+    method,
+    credentials: "include",
     headers,
     body: options.body !== undefined ? JSON.stringify(options.body) : undefined,
   });
@@ -106,12 +88,6 @@ async function request<T>(path: string, options: RequestOptions = {}, isRetry = 
     if (refreshed) {
       return request<T>(path, options, true);
     }
-    // Deliberately does not force-navigate to /login here: public pages
-    // (product listing/detail) also make authenticated-optional background
-    // calls, and a hard redirect would boot an anonymous visitor off a page
-    // they're allowed to see. Protected pages redirect themselves via
-    // useRequireAuth once `user` resolves to null.
-    clearTokens();
     throw new ApiError(401, "Session expired");
   }
 

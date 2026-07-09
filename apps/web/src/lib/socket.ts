@@ -1,5 +1,4 @@
 import { io, type Socket } from "socket.io-client";
-import { getAccessToken } from "./api";
 
 const WS_URL = process.env.NEXT_PUBLIC_WS_URL ?? "http://localhost:4000";
 
@@ -13,10 +12,10 @@ export function getSocket(): Socket {
   socket = io(WS_URL, {
     autoConnect: false,
     transports: ["websocket"],
-    // Function form re-reads the token from storage on every (re)connect
-    // attempt, so a rotated/refreshed access token is picked up
-    // automatically without recreating the socket instance.
-    auth: (cb) => cb({ token: getAccessToken() }),
+    // Auth is the httpOnly accessToken cookie, sent automatically on the
+    // handshake — see ws-jwt.guard.ts's extractTokenFromSocket. Nothing for
+    // JS to read and hand over here.
+    withCredentials: true,
   });
 
   return socket;

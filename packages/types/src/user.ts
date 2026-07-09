@@ -11,12 +11,9 @@ export interface PublicUser {
   createdAt: string;
 }
 
-export interface AuthTokens {
-  accessToken: string;
-  refreshToken: string;
-}
-
-export interface LoginResponse extends AuthTokens {
+// Tokens themselves never reach the client anymore — they're issued as
+// httpOnly cookies (see apps/api's AuthController) that JS can't read.
+export interface LoginResponse {
   user: PublicUser;
 }
 

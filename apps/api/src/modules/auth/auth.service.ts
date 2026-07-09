@@ -3,7 +3,7 @@ import { ConfigService } from "@nestjs/config";
 import { JwtService } from "@nestjs/jwt";
 import * as bcrypt from "bcrypt";
 import { createHash, randomUUID } from "crypto";
-import type { AuthTokens, PublicUser } from "@secondhand/types";
+import type { PublicUser } from "@secondhand/types";
 import { AccountStatus } from "@prisma/client";
 import { PrismaService } from "../../infra/prisma/prisma.service";
 import { RedisService } from "../../infra/redis/redis.service";
@@ -18,6 +18,16 @@ import {
   LOGIN_FAIL_WINDOW_MS,
   LOGIN_LOCK_DURATION_MS,
 } from "./auth.constants";
+
+// Server-side-only shape — never serialized to the client. The controller
+// uses the *Expires values to set matching cookie maxAges so a cookie can
+// never outlive (or embarrassingly outlast) the JWT it holds.
+export interface IssuedTokens {
+  accessToken: string;
+  accessTokenExpiresAt: Date;
+  refreshToken: string;
+  refreshTokenExpiresAt: Date;
+}
 
 @Injectable()
 export class AuthService {
@@ -99,11 +109,11 @@ export class AuthService {
     await this.redisService.client.del(loginFailKey(username), loginLockKey(username));
   }
 
-  login(user: PublicUser): Promise<AuthTokens> {
+  login(user: PublicUser): Promise<IssuedTokens> {
     return this.issueTokens(user.id, user.username);
   }
 
-  async refresh(refreshToken: string): Promise<AuthTokens> {
+  async refresh(refreshToken: string): Promise<IssuedTokens> {
     let payload: JwtPayload;
     try {
       payload = this.jwtService.verify<JwtPayload>(refreshToken, {
@@ -136,7 +146,7 @@ export class AuthService {
     await this.redisService.client.del(refreshTokenKey(userId));
   }
 
-  private async issueTokens(userId: string, username: string): Promise<AuthTokens> {
+  private async issueTokens(userId: string, username: string): Promise<IssuedTokens> {
     const payload: JwtPayload = { sub: userId, username };
 
     const accessToken = this.jwtService.sign(payload);
@@ -149,15 +159,22 @@ export class AuthService {
       jwtid: randomUUID(),
     });
 
-    // Read the actual `exp` claim back off the token rather than
-    // re-parsing JWT_REFRESH_EXPIRES_IN, so the Redis TTL can never drift
-    // from what the token itself asserts.
-    const decoded = this.jwtService.decode(refreshToken) as { exp: number };
-    const ttlMs = decoded.exp * 1000 - Date.now();
+    // Read the actual `exp` claim back off each token rather than
+    // re-parsing *_EXPIRES_IN, so neither the Redis TTL nor the cookie
+    // maxAge the controller sets can ever drift from what the token itself
+    // asserts.
+    const decodedAccess = this.jwtService.decode(accessToken) as { exp: number };
+    const decodedRefresh = this.jwtService.decode(refreshToken) as { exp: number };
+    const refreshTtlMs = decodedRefresh.exp * 1000 - Date.now();
 
-    await this.redisService.client.set(refreshTokenKey(userId), this.hashToken(refreshToken), "PX", ttlMs);
+    await this.redisService.client.set(refreshTokenKey(userId), this.hashToken(refreshToken), "PX", refreshTtlMs);
 
-    return { accessToken, refreshToken };
+    return {
+      accessToken,
+      accessTokenExpiresAt: new Date(decodedAccess.exp * 1000),
+      refreshToken,
+      refreshTokenExpiresAt: new Date(decodedRefresh.exp * 1000),
+    };
   }
 
   private hashToken(token: string): string {

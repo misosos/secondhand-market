@@ -45,6 +45,11 @@ export class ChatGateway implements OnGatewayConnection {
   // message. WsJwtGuard (applied above) re-verifies on every message too,
   // since a 15m access token can expire mid-session on a long-lived socket.
   handleConnection(client: Socket) {
+    if (!this.isSecureEnough(client)) {
+      client.disconnect(true);
+      return;
+    }
+
     const token = extractTokenFromSocket(client);
     if (!token) {
       client.disconnect(true);
@@ -57,6 +62,19 @@ export class ChatGateway implements OnGatewayConnection {
     } catch {
       client.disconnect(true);
     }
+  }
+
+  // Only enforced in production: local dev has no TLS in front of it, and
+  // hard-requiring it there would just break every local connection. In
+  // production, `handshake.secure` is true if this process terminates TLS
+  // itself; `x-forwarded-proto: https` covers the far more common case of a
+  // reverse proxy (nginx/ALB/Cloudflare/...) terminating TLS in front of a
+  // plain-HTTP origin — the standard convention essentially every proxy
+  // sets. If neither holds, the connection reached us over plaintext and is
+  // rejected rather than silently accepted.
+  private isSecureEnough(client: Socket): boolean {
+    if (this.configService.get<string>("NODE_ENV") !== "production") return true;
+    return client.handshake.secure || client.handshake.headers["x-forwarded-proto"] === "https";
   }
 
   @SubscribeMessage(CHAT_EVENTS.JOIN_ROOM)

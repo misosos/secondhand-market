@@ -4,13 +4,32 @@ import { JwtService } from "@nestjs/jwt";
 import { WsException } from "@nestjs/websockets";
 import type { Socket } from "socket.io";
 import { JwtPayload } from "../interfaces/jwt-payload.interface";
+import { ACCESS_TOKEN_COOKIE } from "../../modules/auth/auth.constants";
 
-// Shared with ChatGateway.handleConnection, which does an eager check at
-// connection time (disconnecting bad-token sockets immediately) — this
-// guard then re-verifies per message so a token that expires mid-session
-// (long-lived WS connections can outlive a 15m access token) stops working
-// too, instead of only being checked once at handshake.
+// Minimal parse — we only ever need one named value out of the raw
+// `Cookie` header, so pulling in a full cookie-parsing library for the WS
+// handshake (which isn't run through Express's cookie-parser middleware)
+// isn't worth it.
+function readCookie(header: string | undefined, name: string): string | null {
+  if (!header) return null;
+  for (const part of header.split(";")) {
+    const eq = part.indexOf("=");
+    if (eq === -1) continue;
+    if (part.slice(0, eq).trim() === name) {
+      return decodeURIComponent(part.slice(eq + 1).trim());
+    }
+  }
+  return null;
+}
+
+// Cookie first (browsers send it automatically on the handshake — see
+// AuthController for how it's set), then handshake.auth/header as a
+// fallback for non-browser socket.io clients (tests, scripts) that can't
+// hold a cookie jar.
 export function extractTokenFromSocket(client: Socket): string | null {
+  const cookieToken = readCookie(client.handshake.headers.cookie, ACCESS_TOKEN_COOKIE);
+  if (cookieToken) return cookieToken;
+
   const authToken = client.handshake.auth?.token as string | undefined;
   if (authToken) return authToken;
 
@@ -20,8 +39,8 @@ export function extractTokenFromSocket(client: Socket): string | null {
 }
 
 // Socket.io equivalent of JwtAuthGuard: verifies the token from the
-// handshake (not headers, since browsers can't set custom headers on the
-// initial WS upgrade) and stashes the payload on `socket.data.user`.
+// handshake (cookie, or auth/header for non-browser clients) and stashes
+// the payload on `socket.data.user`.
 @Injectable()
 export class WsJwtGuard implements CanActivate {
   constructor(
