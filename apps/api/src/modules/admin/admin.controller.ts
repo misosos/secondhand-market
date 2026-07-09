@@ -40,8 +40,12 @@ export class AdminController {
   }
 
   @Patch("users/:id/status")
-  async setUserStatus(@Param("id") id: string, @Body() dto: SetUserStatusDto) {
-    await this.adminService.setUserStatus(id, dto.status);
+  async setUserStatus(
+    @CurrentUser("sub") adminId: string,
+    @Param("id") id: string,
+    @Body() dto: SetUserStatusDto,
+  ) {
+    await this.adminService.setUserStatus(id, dto.status, adminId);
     return { success: true };
   }
 

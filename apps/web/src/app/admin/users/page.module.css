@@ -74,3 +74,9 @@
   background: var(--color-danger-bg);
   color: var(--color-danger);
 }
+
+.selfNotice {
+  font-size: 13px;
+  color: var(--color-muted);
+  white-space: nowrap;
+}

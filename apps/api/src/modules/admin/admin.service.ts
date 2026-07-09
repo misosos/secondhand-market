@@ -1,4 +1,4 @@
-import { ConflictException, Injectable, NotFoundException } from "@nestjs/common";
+import { ConflictException, ForbiddenException, Injectable, NotFoundException } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { AccountStatus, ProductStatus, ReportStatus as PrismaReportStatus, ReportTargetType as PrismaReportTargetType } from "@prisma/client";
 import { ReportTargetType as SharedReportTargetType } from "@secondhand/types";
@@ -49,7 +49,14 @@ export class AdminService {
   // which move reportCount in lockstep with status. This just sets status;
   // reportCount is left alone deliberately, so a later report-review action
   // still has an accurate count to reason about.
-  async setUserStatus(userId: string, status: SharedAccountStatus): Promise<void> {
+  async setUserStatus(userId: string, status: SharedAccountStatus, adminId: string): Promise<void> {
+    // A lone admin dormant-ing themselves would have no UI path back — the
+    // frontend already disables this on the admin's own row, but that's
+    // just to avoid showing a button that would always fail; this is the
+    // actual guarantee.
+    if (userId === adminId) {
+      throw new ForbiddenException("Cannot change the status of your own account");
+    }
     const user = await this.prisma.user.findFirst({ where: { id: userId, deletedAt: null } });
     if (!user) throw new NotFoundException("User not found");
     await this.prisma.user.update({ where: { id: userId }, data: { status: status as unknown as AccountStatus } });

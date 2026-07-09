@@ -1,5 +1,5 @@
 import { Test } from "@nestjs/testing";
-import { ConflictException, NotFoundException } from "@nestjs/common";
+import { ConflictException, ForbiddenException, NotFoundException } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { AccountStatus, ProductStatus, ReportStatus, ReportTargetType } from "@prisma/client";
 import { AccountStatus as SharedAccountStatus } from "@secondhand/types";
@@ -210,15 +210,25 @@ describe("AdminService", () => {
   });
 
   describe("setUserStatus", () => {
+    it("rejects an admin trying to change their own status, before ever touching the db", async () => {
+      await expect(service.setUserStatus("admin-1", SharedAccountStatus.DORMANT, "admin-1")).rejects.toThrow(
+        ForbiddenException,
+      );
+      expect(prisma.user.findFirst).not.toHaveBeenCalled();
+      expect(prisma.user.update).not.toHaveBeenCalled();
+    });
+
     it("rejects when the user doesn't exist", async () => {
       prisma.user.findFirst.mockResolvedValue(null);
-      await expect(service.setUserStatus("missing", SharedAccountStatus.DORMANT)).rejects.toThrow(NotFoundException);
+      await expect(service.setUserStatus("missing", SharedAccountStatus.DORMANT, "admin-1")).rejects.toThrow(
+        NotFoundException,
+      );
       expect(prisma.user.update).not.toHaveBeenCalled();
     });
 
     it("sets the status without touching reportCount", async () => {
       prisma.user.findFirst.mockResolvedValue({ id: "u1", deletedAt: null });
-      await service.setUserStatus("u1", SharedAccountStatus.ACTIVE);
+      await service.setUserStatus("u1", SharedAccountStatus.ACTIVE, "admin-1");
       expect(prisma.user.update).toHaveBeenCalledWith({
         where: { id: "u1" },
         data: { status: AccountStatus.ACTIVE },

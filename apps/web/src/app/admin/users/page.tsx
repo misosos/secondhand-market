@@ -6,6 +6,7 @@ import { Button } from "@/components/common/Button";
 import { ErrorMessage } from "@/components/common/ErrorMessage";
 import { Spinner } from "@/components/common/Spinner";
 import { AdminSectionNav } from "@/components/admin/AdminSectionNav";
+import { useAuth } from "@/features/auth/useAuth";
 import { useRequireAuth } from "@/features/auth/useRequireAuth";
 import { useAdminUsers } from "@/features/admin/useAdminUsers";
 import styles from "./page.module.css";
@@ -18,6 +19,7 @@ const TABS: { label: string; value: AccountStatus | "ALL" }[] = [
 
 export default function AdminUsersPage() {
   const { isLoading: authLoading } = useRequireAuth();
+  const { user: currentUser } = useAuth();
   const [tab, setTab] = useState<AccountStatus | "ALL">("ALL");
   const { users, isLoading, error, setUserStatus } = useAdminUsers(tab);
   const [pendingId, setPendingId] = useState<string | null>(null);
@@ -74,13 +76,19 @@ export default function AdminUsersPage() {
                 {new Date(u.createdAt).toLocaleDateString()} 가입
               </p>
             </div>
-            <Button
-              variant={u.status === AccountStatus.ACTIVE ? "danger" : "secondary"}
-              disabled={pendingId === u.id}
-              onClick={() => handleToggleStatus(u.id, u.status)}
-            >
-              {u.status === AccountStatus.ACTIVE ? "휴면 처리" : "휴면 해제"}
-            </Button>
+            {u.id === currentUser?.id ? (
+              <span className={styles.selfNotice} title="자기 자신의 계정 상태는 다른 관리자만 변경할 수 있어요">
+                본인 계정
+              </span>
+            ) : (
+              <Button
+                variant={u.status === AccountStatus.ACTIVE ? "danger" : "secondary"}
+                disabled={pendingId === u.id}
+                onClick={() => handleToggleStatus(u.id, u.status)}
+              >
+                {u.status === AccountStatus.ACTIVE ? "휴면 처리" : "휴면 해제"}
+              </Button>
+            )}
           </li>
         ))}
       </ul>
