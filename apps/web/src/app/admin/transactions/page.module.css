@@ -35,6 +35,13 @@
   white-space: nowrap;
 }
 
+/* PENDING/REJECTED rows never actually settled into the seller's balance
+   (still held in escrow, or refunded back to the buyer) — dim them so they
+   don't read as a normal completed movement of money. */
+.unsettled {
+  color: var(--color-muted);
+}
+
 .loadMoreButton {
   margin-top: 16px;
   padding: 10px 16px;

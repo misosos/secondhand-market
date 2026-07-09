@@ -35,7 +35,9 @@ export default function AdminTransactionsPage() {
                 {tx.buyer.username} → {tx.seller.username} · {new Date(tx.createdAt).toLocaleString()}
               </p>
             </div>
-            <span className={styles.amount}>{tx.amount.toLocaleString()}원</span>
+            <span className={`${styles.amount} ${tx.status !== "COMPLETED" ? styles.unsettled : ""}`}>
+              {tx.amount.toLocaleString()}원
+            </span>
           </li>
         ))}
       </ul>
