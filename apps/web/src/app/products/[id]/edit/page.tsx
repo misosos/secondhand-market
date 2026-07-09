@@ -32,7 +32,16 @@ export default function EditProductPage({ params }: { params: { id: string } }) 
   return (
     <div>
       <h1 style={{ fontSize: 20, fontWeight: 800, marginBottom: 20 }}>상품 수정</h1>
-      <ProductForm initialValues={product} onSubmit={handleSubmit} submitLabel="저장하기" />
+      <ProductForm
+        initialValues={{
+          name: product.name,
+          description: product.description,
+          price: product.price,
+          imageUrls: product.images.map((image) => image.url),
+        }}
+        onSubmit={handleSubmit}
+        submitLabel="저장하기"
+      />
     </div>
   );
 }
