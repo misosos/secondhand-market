@@ -9,9 +9,3 @@
   justify-content: center;
   margin: 24px 0;
 }
-
-.empty {
-  color: var(--color-muted);
-  text-align: center;
-  padding: 48px 0;
-}

@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, type FormEvent } from "react";
+import { UserPlus } from "lucide-react";
 import { Button } from "@/components/common/Button";
 import { ErrorMessage } from "@/components/common/ErrorMessage";
 import { Input } from "@/components/common/Input";
@@ -55,7 +56,7 @@ export default function SignupPage() {
           required
         />
         <ErrorMessage>{error}</ErrorMessage>
-        <Button type="submit" disabled={isSubmitting} style={{ width: "100%" }}>
+        <Button type="submit" icon={UserPlus} disabled={isSubmitting} style={{ width: "100%" }}>
           {isSubmitting ? "가입 중..." : "회원가입"}
         </Button>
       </form>

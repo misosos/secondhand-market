@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, type ChangeEvent, type FormEvent } from "react";
+import { Save, X } from "lucide-react";
 import { Button } from "@/components/common/Button";
 import { ErrorMessage } from "@/components/common/ErrorMessage";
 import { Input } from "@/components/common/Input";
@@ -107,7 +108,7 @@ export function ProductForm({ initialValues, onSubmit, submitLabel }: ProductFor
             <div key={url} className={styles.imageThumb}>
               <img src={url} alt="" />
               <button type="button" className={styles.removeButton} onClick={() => removeImage(url)}>
-                ×
+                <X size={14} strokeWidth={2.5} aria-hidden />
               </button>
             </div>
           ))}
@@ -118,7 +119,7 @@ export function ProductForm({ initialValues, onSubmit, submitLabel }: ProductFor
 
       <ErrorMessage>{error}</ErrorMessage>
 
-      <Button type="submit" disabled={isSubmitting || isUploading}>
+      <Button type="submit" icon={Save} disabled={isSubmitting || isUploading}>
         {isSubmitting ? "저장 중..." : submitLabel}
       </Button>
     </form>

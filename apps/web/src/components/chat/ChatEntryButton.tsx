@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { MessageCircle } from "lucide-react";
 import { Button } from "@/components/common/Button";
 import { ChatWindow } from "./ChatWindow";
 
@@ -15,7 +16,7 @@ export function ChatEntryButton({ peerId, peerUsername, label = "판매자와 �
 
   return (
     <>
-      <Button variant="secondary" onClick={() => setIsOpen(true)}>
+      <Button variant="secondary" icon={MessageCircle} onClick={() => setIsOpen(true)}>
         {label}
       </Button>
       {isOpen && <ChatWindow peerId={peerId} peerUsername={peerUsername} onClose={() => setIsOpen(false)} />}

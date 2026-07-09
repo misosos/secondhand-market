@@ -1,3 +1,4 @@
+import { Banknote, Check, X } from "lucide-react";
 import type { ChatMessageDto } from "@secondhand/types";
 import styles from "./ChatMessageBubble.module.css";
 
@@ -24,15 +25,17 @@ export function ChatMessageBubble({ message, isOwn, showSender, onAccept, onReje
       {showSender && !isOwn && <span className={styles.sender}>{message.senderUsername}</span>}
       {isTransfer ? (
         <div className={styles.transferBubble}>
-          <span className={styles.transferIcon}>💸</span>
+          <Banknote size={16} strokeWidth={2.25} className={styles.transferIcon} aria-hidden />
           {message.transactionStatus === "PENDING" && !isOwn ? (
             <div className={styles.transferDecision}>
               <span>{amountText}을 받으시겠어요?</span>
               <div className={styles.transferDecisionActions}>
                 <button type="button" onClick={onAccept} disabled={isDeciding}>
+                  <Check size={14} strokeWidth={2.5} aria-hidden />
                   받기
                 </button>
                 <button type="button" className={styles.transferRejectButton} onClick={onReject} disabled={isDeciding}>
+                  <X size={14} strokeWidth={2.5} aria-hidden />
                   거절
                 </button>
               </div>

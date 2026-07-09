@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, type FormEvent } from "react";
+import { KeyRound, Save } from "lucide-react";
 import { Button } from "@/components/common/Button";
 import { ErrorMessage } from "@/components/common/ErrorMessage";
 import { Input } from "@/components/common/Input";
@@ -74,7 +75,7 @@ export default function MyPage() {
           <TextArea value={bio} onChange={(e) => setBio(e.target.value)} rows={4} maxLength={500} />
           {bioSuccess && <p className={styles.success}>저장되었습니다.</p>}
           <ErrorMessage>{bioError}</ErrorMessage>
-          <Button type="submit" disabled={isSavingBio}>
+          <Button type="submit" icon={Save} disabled={isSavingBio}>
             {isSavingBio ? "저장 중..." : "저장"}
           </Button>
         </form>
@@ -102,7 +103,7 @@ export default function MyPage() {
           />
           {passwordSuccess && <p className={styles.success}>비밀번호가 변경되었습니다.</p>}
           <ErrorMessage>{passwordError}</ErrorMessage>
-          <Button type="submit" disabled={isSavingPassword}>
+          <Button type="submit" icon={KeyRound} disabled={isSavingPassword}>
             {isSavingPassword ? "변경 중..." : "변경하기"}
           </Button>
         </form>

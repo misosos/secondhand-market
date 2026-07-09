@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, type FormEvent } from "react";
+import { LogIn } from "lucide-react";
 import { Button } from "@/components/common/Button";
 import { ErrorMessage } from "@/components/common/ErrorMessage";
 import { Input } from "@/components/common/Input";
@@ -51,7 +52,7 @@ export default function LoginPage() {
           required
         />
         <ErrorMessage>{error}</ErrorMessage>
-        <Button type="submit" disabled={isSubmitting} style={{ width: "100%" }}>
+        <Button type="submit" icon={LogIn} disabled={isSubmitting} style={{ width: "100%" }}>
           {isSubmitting ? "로그인 중..." : "로그인"}
         </Button>
       </form>

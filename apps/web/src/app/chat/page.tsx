@@ -1,7 +1,9 @@
 "use client";
 
 import { useState } from "react";
+import { MessageCircle } from "lucide-react";
 import { ChatWindow } from "@/components/chat/ChatWindow";
+import { EmptyState } from "@/components/common/EmptyState";
 import { ErrorMessage } from "@/components/common/ErrorMessage";
 import { Spinner } from "@/components/common/Spinner";
 import { useAuth } from "@/features/auth/useAuth";
@@ -24,7 +26,7 @@ export default function ChatListPage() {
 
       <ErrorMessage>{error}</ErrorMessage>
       {isLoading && <Spinner />}
-      {!isLoading && rooms.length === 0 && <p className={styles.empty}>아직 대화가 없습니다.</p>}
+      {!isLoading && rooms.length === 0 && <EmptyState icon={MessageCircle} message="아직 대화가 없습니다." />}
 
       <ul className={styles.list}>
         {rooms.map((room) => (

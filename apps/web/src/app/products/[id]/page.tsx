@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { Pencil, ShoppingBag, Trash2 } from "lucide-react";
 import { ProductStatus, ReportTargetType } from "@secondhand/types";
 import { Button } from "@/components/common/Button";
 import { ErrorMessage } from "@/components/common/ErrorMessage";
@@ -125,9 +126,9 @@ export default function ProductDetailPage({ params }: { params: { id: string } }
           {isOwner ? (
             <>
               <Link href={`/products/${product.id}/edit`}>
-                <Button variant="secondary">수정</Button>
+                <Button variant="secondary" icon={Pencil}>수정</Button>
               </Link>
-              <Button variant="danger" onClick={handleDelete} disabled={isDeleting}>
+              <Button variant="danger" icon={Trash2} onClick={handleDelete} disabled={isDeleting}>
                 {isDeleting ? "삭제 중..." : "삭제"}
               </Button>
             </>
@@ -135,7 +136,7 @@ export default function ProductDetailPage({ params }: { params: { id: string } }
             user && (
               <>
                 {isPurchasable && (
-                  <Button onClick={handlePurchase} disabled={isPurchasing}>
+                  <Button icon={ShoppingBag} onClick={handlePurchase} disabled={isPurchasing}>
                     {isPurchasing ? "구매 중..." : "구매하기"}
                   </Button>
                 )}

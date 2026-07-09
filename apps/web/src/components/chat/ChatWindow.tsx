@@ -2,9 +2,11 @@
 
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { createPortal } from "react-dom";
+import { Banknote, ChevronUp, MessageCircle, Send, X } from "lucide-react";
 import { useChat } from "@/features/chat/useChat";
 import { useAuth } from "@/features/auth/useAuth";
 import { Spinner } from "@/components/common/Spinner";
+import { EmptyState } from "@/components/common/EmptyState";
 import { ErrorMessage } from "@/components/common/ErrorMessage";
 import { ChatMessageBubble } from "./ChatMessageBubble";
 import styles from "./ChatWindow.module.css";
@@ -103,10 +105,11 @@ export function ChatWindow({ peerId, peerUsername, onClose }: ChatWindowProps) {
           <span>{peerUsername}</span>
           <div className={styles.headerActions}>
             <button className={styles.transferToggle} onClick={() => setIsTransferOpen((prev) => !prev)}>
-              💸 송금
+              <Banknote size={14} strokeWidth={2.25} aria-hidden />
+              송금
             </button>
             <button className={styles.closeButton} onClick={onClose} aria-label="닫기">
-              ×
+              <X size={18} strokeWidth={2.25} aria-hidden />
             </button>
           </div>
         </div>
@@ -115,13 +118,16 @@ export function ChatWindow({ peerId, peerUsername, onClose }: ChatWindowProps) {
           {hasMoreHistory && (
             <div className={styles.loadMoreWrap}>
               <button className={styles.loadMoreButton} onClick={loadMoreHistory}>
+                <ChevronUp size={14} strokeWidth={2.25} aria-hidden />
                 이전 메시지 더 보기
               </button>
             </div>
           )}
 
           {isConnecting && <Spinner />}
-          {!isConnecting && messages.length === 0 && <p className={styles.empty}>대화를 시작해보세요.</p>}
+          {!isConnecting && messages.length === 0 && (
+            <EmptyState icon={MessageCircle} message="대화를 시작해보세요." />
+          )}
 
           {messages.map((message) => (
             <ChatMessageBubble
@@ -151,6 +157,7 @@ export function ChatWindow({ peerId, peerUsername, onClose }: ChatWindowProps) {
               autoFocus
             />
             <button type="submit" disabled={isSendingTransfer || !transferAmount}>
+              <Banknote size={14} strokeWidth={2.25} aria-hidden />
               {isSendingTransfer ? "보내는 중..." : "보내기"}
             </button>
           </form>
@@ -164,6 +171,7 @@ export function ChatWindow({ peerId, peerUsername, onClose }: ChatWindowProps) {
             placeholder="메시지를 입력하세요"
           />
           <button type="submit" disabled={!draft.trim()}>
+            <Send size={15} strokeWidth={2.25} aria-hidden />
             전송
           </button>
         </form>

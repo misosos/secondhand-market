@@ -43,6 +43,9 @@
 }
 
 .transferToggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
   background: none;
   border: 1px solid var(--color-border);
   border-radius: 999px;
@@ -54,10 +57,11 @@
 }
 
 .closeButton {
+  display: inline-flex;
+  align-items: center;
   background: none;
   border: none;
   cursor: pointer;
-  font-size: 18px;
   color: var(--color-muted);
 }
 
@@ -67,6 +71,12 @@
   padding: 12px;
   border-top: 1px solid var(--color-border);
   background: var(--color-bg-elevated);
+}
+
+.transferForm button {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
 }
 
 .transferInput {
@@ -93,6 +103,9 @@
 }
 
 .loadMoreButton {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
   background: none;
   border: none;
   color: var(--color-primary);
@@ -100,18 +113,17 @@
   cursor: pointer;
 }
 
-.empty {
-  color: var(--color-muted);
-  text-align: center;
-  margin-top: 24px;
-  font-size: 14px;
-}
-
 .form {
   display: flex;
   gap: 8px;
   padding: 12px;
   border-top: 1px solid var(--color-border);
+}
+
+.form button {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
 }
 
 .input {

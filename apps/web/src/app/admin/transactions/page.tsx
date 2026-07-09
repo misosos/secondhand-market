@@ -1,5 +1,7 @@
 "use client";
 
+import { ChevronDown, Receipt } from "lucide-react";
+import { EmptyState } from "@/components/common/EmptyState";
 import { ErrorMessage } from "@/components/common/ErrorMessage";
 import { Spinner } from "@/components/common/Spinner";
 import { AdminSectionNav } from "@/components/admin/AdminSectionNav";
@@ -20,7 +22,7 @@ export default function AdminTransactionsPage() {
 
       <ErrorMessage>{error}</ErrorMessage>
       {isLoading && <Spinner />}
-      {!isLoading && items.length === 0 && <p className={styles.empty}>거래 내역이 없습니다.</p>}
+      {!isLoading && items.length === 0 && <EmptyState icon={Receipt} message="거래 내역이 없습니다." />}
 
       <ul className={styles.list}>
         {items.map((tx) => (
@@ -44,6 +46,7 @@ export default function AdminTransactionsPage() {
 
       {hasMore && (
         <button className={styles.loadMoreButton} onClick={loadMore} disabled={isLoadingMore}>
+          <ChevronDown size={14} strokeWidth={2.25} aria-hidden />
           {isLoadingMore ? "불러오는 중..." : "더 보기"}
         </button>
       )}

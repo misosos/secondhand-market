@@ -1,8 +1,10 @@
 "use client";
 
 import { useState } from "react";
+import { Users, UserCheck, UserX } from "lucide-react";
 import { AccountStatus } from "@secondhand/types";
 import { Button } from "@/components/common/Button";
+import { EmptyState } from "@/components/common/EmptyState";
 import { ErrorMessage } from "@/components/common/ErrorMessage";
 import { Spinner } from "@/components/common/Spinner";
 import { AdminSectionNav } from "@/components/admin/AdminSectionNav";
@@ -57,7 +59,7 @@ export default function AdminUsersPage() {
 
       <ErrorMessage>{error}</ErrorMessage>
       {isLoading && <Spinner />}
-      {!isLoading && !error && users.length === 0 && <p className={styles.empty}>표시할 유저가 없습니다.</p>}
+      {!isLoading && !error && users.length === 0 && <EmptyState icon={Users} message="표시할 유저가 없습니다." />}
 
       <ul className={styles.list}>
         {users.map((u) => (
@@ -83,6 +85,7 @@ export default function AdminUsersPage() {
             ) : (
               <Button
                 variant={u.status === AccountStatus.ACTIVE ? "danger" : "secondary"}
+                icon={u.status === AccountStatus.ACTIVE ? UserX : UserCheck}
                 disabled={pendingId === u.id}
                 onClick={() => handleToggleStatus(u.id, u.status)}
               >

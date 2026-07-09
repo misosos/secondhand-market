@@ -2,6 +2,7 @@
 
 import { Suspense, useState, type FormEvent } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import { ArrowLeft, Flag, X } from "lucide-react";
 import { ReportTargetType } from "@secondhand/types";
 import { Button } from "@/components/common/Button";
 import { ErrorMessage } from "@/components/common/ErrorMessage";
@@ -45,7 +46,7 @@ function ReportPageContent() {
       {success ? (
         <>
           <p style={{ marginBottom: 16 }}>신고가 접수되었습니다.</p>
-          <Button onClick={() => router.back()}>돌아가기</Button>
+          <Button icon={ArrowLeft} onClick={() => router.back()}>돌아가기</Button>
         </>
       ) : (
         <form onSubmit={handleSubmit}>
@@ -58,10 +59,10 @@ function ReportPageContent() {
           />
           <ErrorMessage>{error}</ErrorMessage>
           <div style={{ display: "flex", gap: 8 }}>
-            <Button type="button" variant="secondary" onClick={() => router.back()}>
+            <Button type="button" variant="secondary" icon={X} onClick={() => router.back()}>
               취소
             </Button>
-            <Button type="submit" variant="danger" disabled={isSubmitting || !reason.trim()}>
+            <Button type="submit" variant="danger" icon={Flag} disabled={isSubmitting || !reason.trim()}>
               {isSubmitting ? "제출 중..." : "신고하기"}
             </Button>
           </div>

@@ -5,6 +5,9 @@
 }
 
 .link {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
   padding: 7px 16px;
   border-radius: 999px;
   border: 1px solid transparent;

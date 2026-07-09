@@ -1,6 +1,19 @@
 "use client";
 
 import Link from "next/link";
+import {
+  LogIn,
+  LogOut,
+  MessageCircle,
+  MessagesSquare,
+  Package,
+  PlusCircle,
+  Receipt,
+  ShieldCheck,
+  UserCircle,
+  UserPlus,
+  Wallet,
+} from "lucide-react";
 import { Role } from "@secondhand/types";
 import { useAuth } from "@/features/auth/useAuth";
 import { ThemeToggle } from "./ThemeToggle";
@@ -19,23 +32,56 @@ export function NavBar() {
           <nav className={styles.nav}>
             {!isLoading && user && (
               <>
-                <Link href="/products/new">상품 등록</Link>
-                <Link href="/mypage/products">내 상품</Link>
-                <Link href="/chat">채팅</Link>
-                <Link href="/chat/global">전체채팅</Link>
-                <Link href="/mypage/transactions">거래내역</Link>
-                <Link href="/mypage">마이페이지</Link>
-                {user.role === Role.ADMIN && <Link href="/admin/reports">관리자</Link>}
-                <span className={styles.balance}>{user.balance.toLocaleString()}원</span>
+                <Link href="/products/new">
+                  <PlusCircle size={14} strokeWidth={2.25} aria-hidden />
+                  상품 등록
+                </Link>
+                <Link href="/mypage/products">
+                  <Package size={14} strokeWidth={2.25} aria-hidden />
+                  내 상품
+                </Link>
+                <Link href="/chat">
+                  <MessageCircle size={14} strokeWidth={2.25} aria-hidden />
+                  채팅
+                </Link>
+                <Link href="/chat/global">
+                  <MessagesSquare size={14} strokeWidth={2.25} aria-hidden />
+                  전체채팅
+                </Link>
+                <Link href="/mypage/transactions">
+                  <Receipt size={14} strokeWidth={2.25} aria-hidden />
+                  거래내역
+                </Link>
+                <Link href="/mypage">
+                  <UserCircle size={14} strokeWidth={2.25} aria-hidden />
+                  마이페이지
+                </Link>
+                {user.role === Role.ADMIN && (
+                  <Link href="/admin/reports">
+                    <ShieldCheck size={14} strokeWidth={2.25} aria-hidden />
+                    관리자
+                  </Link>
+                )}
+                <span className={styles.balance}>
+                  <Wallet size={14} strokeWidth={2.25} aria-hidden />
+                  {user.balance.toLocaleString()}원
+                </span>
                 <button className={styles.logoutButton} onClick={() => logout()}>
+                  <LogOut size={14} strokeWidth={2.25} aria-hidden />
                   로그아웃
                 </button>
               </>
             )}
             {!isLoading && !user && (
               <>
-                <Link href="/login">로그인</Link>
-                <Link href="/signup">회원가입</Link>
+                <Link href="/login">
+                  <LogIn size={14} strokeWidth={2.25} aria-hidden />
+                  로그인
+                </Link>
+                <Link href="/signup">
+                  <UserPlus size={14} strokeWidth={2.25} aria-hidden />
+                  회원가입
+                </Link>
               </>
             )}
           </nav>

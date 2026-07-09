@@ -2,8 +2,10 @@
 
 import Link from "next/link";
 import { useState } from "react";
+import { Package, Pencil, Plus, Trash2 } from "lucide-react";
 import { ProductStatus } from "@secondhand/types";
 import { Button } from "@/components/common/Button";
+import { EmptyState } from "@/components/common/EmptyState";
 import { ErrorMessage } from "@/components/common/ErrorMessage";
 import { Spinner } from "@/components/common/Spinner";
 import { useRequireAuth } from "@/features/auth/useRequireAuth";
@@ -39,13 +41,13 @@ export default function MyProductsPage() {
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
         <h1 style={{ fontSize: 20, fontWeight: 800 }}>내 상품 관리</h1>
         <Link href="/products/new">
-          <Button variant="secondary">상품 등록</Button>
+          <Button variant="secondary" icon={Plus}>상품 등록</Button>
         </Link>
       </div>
 
       <ErrorMessage>{error}</ErrorMessage>
       {isLoading && <Spinner />}
-      {!isLoading && items.length === 0 && <p className={styles.empty}>등록한 상품이 없습니다.</p>}
+      {!isLoading && items.length === 0 && <EmptyState icon={Package} message="등록한 상품이 없습니다." />}
 
       <div className={styles.grid}>
         {items.map((product) => {
@@ -85,10 +87,15 @@ export default function MyProductsPage() {
                 <div className={styles.actions}>
                   {canOpen && (
                     <Link href={`/products/${product.id}/edit`}>
-                      <Button variant="secondary">수정</Button>
+                      <Button variant="secondary" icon={Pencil}>수정</Button>
                     </Link>
                   )}
-                  <Button variant="danger" disabled={deletingId === product.id} onClick={() => handleDelete(product.id)}>
+                  <Button
+                    variant="danger"
+                    icon={Trash2}
+                    disabled={deletingId === product.id}
+                    onClick={() => handleDelete(product.id)}
+                  >
                     삭제
                   </Button>
                 </div>

@@ -1,8 +1,10 @@
 "use client";
 
 import { useState } from "react";
+import { Check, Flag, Trash2, X } from "lucide-react";
 import { ReportStatus, ReportTargetType, type ReportDecision } from "@secondhand/types";
 import { Button } from "@/components/common/Button";
+import { EmptyState } from "@/components/common/EmptyState";
 import { ErrorMessage } from "@/components/common/ErrorMessage";
 import { Spinner } from "@/components/common/Spinner";
 import { AdminSectionNav } from "@/components/admin/AdminSectionNav";
@@ -63,7 +65,7 @@ export default function AdminReportsPage() {
 
       <ErrorMessage>{error}</ErrorMessage>
       {isLoading && <Spinner />}
-      {!isLoading && !error && reports.length === 0 && <p className={styles.empty}>표시할 신고가 없습니다.</p>}
+      {!isLoading && !error && reports.length === 0 && <EmptyState icon={Flag} message="표시할 신고가 없습니다." />}
 
       <ul className={styles.list}>
         {reports.map((report) => (
@@ -89,6 +91,7 @@ export default function AdminReportsPage() {
                 <>
                   <Button
                     variant="secondary"
+                    icon={Check}
                     disabled={pendingActionId === report.id}
                     onClick={() => handleReview(report.id, "RESOLVED")}
                   >
@@ -96,6 +99,7 @@ export default function AdminReportsPage() {
                   </Button>
                   <Button
                     variant="danger"
+                    icon={X}
                     disabled={pendingActionId === report.id}
                     onClick={() => handleReview(report.id, "REJECTED")}
                   >
@@ -106,6 +110,7 @@ export default function AdminReportsPage() {
               {report.targetType === ReportTargetType.PRODUCT && (
                 <Button
                   variant="danger"
+                  icon={Trash2}
                   disabled={pendingActionId === report.id}
                   onClick={() => handleDeleteProduct(report.id, report.target.id)}
                 >

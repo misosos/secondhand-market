@@ -42,6 +42,9 @@
 }
 
 .nav a {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
   text-decoration: none;
   color: var(--color-muted);
   padding: 6px 12px;
@@ -50,12 +53,20 @@
   white-space: nowrap;
 }
 
+.nav a svg {
+  flex-shrink: 0;
+  opacity: 0.75;
+}
+
 .nav a:hover {
   color: var(--color-text);
   background: var(--color-surface);
 }
 
 .balance {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
   font-size: 12.5px;
   font-weight: 700;
   color: var(--color-text);
@@ -63,6 +74,9 @@
 }
 
 .logoutButton {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
   background: none;
   border: none;
   cursor: pointer;

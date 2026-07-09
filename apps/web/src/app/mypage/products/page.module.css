@@ -1,8 +1,3 @@
-.empty {
-  color: var(--color-muted);
-  font-size: 14px;
-}
-
 .grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
@@ -83,4 +78,15 @@
 .actions {
   display: flex;
   gap: 8px;
+}
+
+/* Card is only ~160px wide at minimum — the Button component's default
+   padding/font-size doesn't leave room for icon + label side by side at
+   that width, so both actions here get a tighter, single-line-friendly
+   size instead. */
+.actions button {
+  flex: 1;
+  padding: 7px 8px;
+  font-size: 13px;
+  white-space: nowrap;
 }

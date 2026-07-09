@@ -26,10 +26,6 @@
   color: #fff;
 }
 
-.empty {
-  color: var(--color-muted);
-  font-size: 14px;
-}
 
 .list {
   display: flex;

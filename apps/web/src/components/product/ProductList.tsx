@@ -1,7 +1,9 @@
 "use client";
 
+import { ChevronDown, Package } from "lucide-react";
 import type { ProductSummary } from "@secondhand/types";
 import { Button } from "@/components/common/Button";
+import { EmptyState } from "@/components/common/EmptyState";
 import { Spinner } from "@/components/common/Spinner";
 import { ProductCard } from "./ProductCard";
 import styles from "./ProductList.module.css";
@@ -20,7 +22,7 @@ export function ProductList({ items, isLoading, isLoadingMore, hasMore, onLoadMo
   }
 
   if (items.length === 0) {
-    return <p className={styles.empty}>등록된 상품이 없습니다.</p>;
+    return <EmptyState icon={Package} message="등록된 상품이 없습니다." />;
   }
 
   return (
@@ -32,7 +34,7 @@ export function ProductList({ items, isLoading, isLoadingMore, hasMore, onLoadMo
       </div>
       {hasMore && (
         <div className={styles.loadMoreWrap}>
-          <Button variant="secondary" onClick={onLoadMore} disabled={isLoadingMore}>
+          <Button variant="secondary" icon={ChevronDown} onClick={onLoadMore} disabled={isLoadingMore}>
             {isLoadingMore ? "불러오는 중..." : "더 보기"}
           </Button>
         </div>

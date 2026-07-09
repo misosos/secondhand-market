@@ -1,7 +1,9 @@
 "use client";
 
 import { useEffect, useRef, useState, type FormEvent } from "react";
+import { ChevronUp, MessagesSquare, Send } from "lucide-react";
 import { ChatMessageBubble } from "@/components/chat/ChatMessageBubble";
+import { EmptyState } from "@/components/common/EmptyState";
 import { ErrorMessage } from "@/components/common/ErrorMessage";
 import { Spinner } from "@/components/common/Spinner";
 import { useAuth } from "@/features/auth/useAuth";
@@ -39,13 +41,16 @@ export default function GlobalChatPage() {
           {hasMoreHistory && (
             <div className={styles.loadMoreWrap}>
               <button className={styles.loadMoreButton} onClick={loadMoreHistory}>
+                <ChevronUp size={14} strokeWidth={2.25} aria-hidden />
                 이전 메시지 더 보기
               </button>
             </div>
           )}
 
           {isConnecting && <Spinner />}
-          {!isConnecting && messages.length === 0 && <p className={styles.empty}>대화를 시작해보세요.</p>}
+          {!isConnecting && messages.length === 0 && (
+            <EmptyState icon={MessagesSquare} message="대화를 시작해보세요." />
+          )}
 
           {messages.map((message) => (
             <ChatMessageBubble key={message.id} message={message} isOwn={message.senderId === user?.id} showSender />
@@ -63,6 +68,7 @@ export default function GlobalChatPage() {
             placeholder="전체 채팅에 메시지를 입력하세요"
           />
           <button type="submit" disabled={!draft.trim()}>
+            <Send size={15} strokeWidth={2.25} aria-hidden />
             전송
           </button>
         </form>
