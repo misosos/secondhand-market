@@ -28,6 +28,15 @@ export default function MyTransactionsPage() {
       <ul className={styles.list}>
         {items.map((tx) => {
           const isSale = tx.seller.id === user.id;
+          // A chat transfer's escrow hold means the recipient (seller side)
+          // never actually has the money until COMPLETED — showing "+" for
+          // a still-PENDING or REJECTED-and-refunded one would claim a
+          // deposit that never happened. Likewise a REJECTED transfer nets
+          // back to zero for the sender, so it gets no sign either — only
+          // the sender's side of a still-PENDING hold ("already left my
+          // balance") and any COMPLETED row show a sign at all.
+          const sign =
+            tx.status === "REJECTED" ? null : tx.status === "PENDING" && isSale ? null : isSale ? "+" : "-";
           return (
             <li key={tx.id} className={styles.card}>
               <div>
@@ -47,8 +56,10 @@ export default function MyTransactionsPage() {
                   · {new Date(tx.createdAt).toLocaleString()}
                 </p>
               </div>
-              <span className={`${styles.amount} ${isSale ? styles.received : styles.sent}`}>
-                {isSale ? "+" : "-"}
+              <span
+                className={`${styles.amount} ${sign === "+" ? styles.received : sign === "-" ? styles.sent : ""}`}
+              >
+                {sign}
                 {tx.amount.toLocaleString()}원
               </span>
             </li>
