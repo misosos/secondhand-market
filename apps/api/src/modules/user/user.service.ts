@@ -1,7 +1,13 @@
-import { Injectable, NotFoundException, UnauthorizedException } from "@nestjs/common";
+import { ForbiddenException, Injectable, NotFoundException, UnauthorizedException } from "@nestjs/common";
 import * as bcrypt from "bcrypt";
-import type { User } from "@prisma/client";
-import type { AccountStatus, ChangePasswordRequest, PublicUser, Role, UpdateProfileRequest } from "@secondhand/types";
+import { AccountStatus, type User } from "@prisma/client";
+import type {
+  AccountStatus as SharedAccountStatus,
+  ChangePasswordRequest,
+  PublicUser,
+  Role,
+  UpdateProfileRequest,
+} from "@secondhand/types";
 import { PrismaService } from "../../infra/prisma/prisma.service";
 import { RedisService } from "../../infra/redis/redis.service";
 import { refreshTokenKey } from "../../common/utils/redis-keys";
@@ -29,6 +35,8 @@ export class UserService {
   }
 
   async updateBio(userId: string, dto: UpdateProfileRequest): Promise<PublicUser> {
+    await this.assertActive(userId);
+
     const user = await this.prisma.user.update({
       where: { id: userId },
       data: { bio: dto.bio },
@@ -39,6 +47,9 @@ export class UserService {
   async changePassword(userId: string, dto: ChangePasswordRequest): Promise<void> {
     const user = await this.findActiveById(userId);
     if (!user) throw new NotFoundException("User not found");
+    if (user.status === AccountStatus.DORMANT) {
+      throw new ForbiddenException("Dormant accounts cannot change their password");
+    }
 
     const isMatch = await bcrypt.compare(dto.currentPassword, user.password);
     if (!isMatch) throw new UnauthorizedException("Current password is incorrect");
@@ -58,10 +69,18 @@ export class UserService {
       bio: user.bio,
       // Prisma's generated AccountStatus enum and @secondhand/types's are
       // distinct TS types with identical string values at runtime.
-      status: user.status as unknown as AccountStatus,
+      status: user.status as unknown as SharedAccountStatus,
       role: user.role as unknown as Role,
       balance: user.balance,
       createdAt: user.createdAt.toISOString(),
     };
+  }
+
+  private async assertActive(userId: string): Promise<void> {
+    const user = await this.findActiveById(userId);
+    if (!user) throw new NotFoundException("User not found");
+    if (user.status === AccountStatus.DORMANT) {
+      throw new ForbiddenException("Dormant accounts cannot update their profile");
+    }
   }
 }

@@ -41,6 +41,7 @@ export class ProductService {
   }
 
   async update(sellerId: string, productId: string, dto: UpdateProductRequest): Promise<ProductDetail> {
+    await this.assertSellerActive(sellerId);
     await this.findOwned(sellerId, productId);
 
     const product = await this.prisma.$transaction(async (tx) => {
@@ -66,6 +67,7 @@ export class ProductService {
   }
 
   async remove(sellerId: string, productId: string): Promise<void> {
+    await this.assertSellerActive(sellerId);
     await this.findOwned(sellerId, productId);
     await this.prisma.product.update({ where: { id: productId }, data: { deletedAt: new Date() } });
   }

@@ -1,5 +1,5 @@
 import { Test } from "@nestjs/testing";
-import { NotFoundException, UnauthorizedException } from "@nestjs/common";
+import { ForbiddenException, NotFoundException, UnauthorizedException } from "@nestjs/common";
 import * as bcrypt from "bcrypt";
 import { AccountStatus } from "@prisma/client";
 import { UserService } from "./user.service";
@@ -64,6 +64,32 @@ describe("UserService", () => {
     });
   });
 
+  describe("updateBio", () => {
+    it("rejects a dormant caller before writing anything", async () => {
+      prisma.user.findFirst.mockResolvedValue({ id: "u1", status: AccountStatus.DORMANT });
+      await expect(service.updateBio("u1", { bio: "hi" })).rejects.toThrow(ForbiddenException);
+      expect(prisma.user.update).not.toHaveBeenCalled();
+    });
+
+    it("updates the bio for an active caller", async () => {
+      prisma.user.findFirst.mockResolvedValue({ id: "u1", status: AccountStatus.ACTIVE });
+      prisma.user.update.mockResolvedValue({
+        id: "u1",
+        username: "alice",
+        bio: "new bio",
+        status: AccountStatus.ACTIVE,
+        role: "USER",
+        balance: 0,
+        createdAt: new Date("2026-01-01T00:00:00.000Z"),
+      });
+
+      const result = await service.updateBio("u1", { bio: "new bio" });
+
+      expect(prisma.user.update).toHaveBeenCalledWith({ where: { id: "u1" }, data: { bio: "new bio" } });
+      expect(result.bio).toBe("new bio");
+    });
+  });
+
   describe("changePassword", () => {
     const existingUser = {
       id: "u1",
@@ -79,6 +105,14 @@ describe("UserService", () => {
       await expect(
         service.changePassword("u1", { currentPassword: "old", newPassword: "newpassword123" }),
       ).rejects.toThrow(NotFoundException);
+    });
+
+    it("rejects a dormant caller before ever checking the password", async () => {
+      prisma.user.findFirst.mockResolvedValue({ ...existingUser, status: AccountStatus.DORMANT });
+      await expect(
+        service.changePassword("u1", { currentPassword: "old", newPassword: "newpassword123" }),
+      ).rejects.toThrow(ForbiddenException);
+      expect(bcrypt.compare).not.toHaveBeenCalled();
     });
 
     it("rejects an incorrect current password without touching the row", async () => {
