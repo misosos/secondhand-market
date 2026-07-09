@@ -35,15 +35,18 @@ export function useChatRooms() {
     refresh();
   }, [refresh]);
 
-  // Refreshes the preview/ordering when a message arrives in whichever room
-  // is currently open (the gateway only broadcasts chat:new to sockets that
+  // Refreshes the preview/ordering when a message arrives — or an existing
+  // one's status changes, e.g. a transfer being 받기/거절'd — in whichever
+  // room is currently open (the gateway only broadcasts to sockets that
   // have chat:join'd that room, so this doesn't cover rooms not open here).
   useEffect(() => {
     if (!user) return;
     const socket = connectSocket();
     socket.on(CHAT_EVENTS.NEW_MESSAGE, refresh);
+    socket.on(CHAT_EVENTS.MESSAGE_UPDATED, refresh);
     return () => {
       socket.off(CHAT_EVENTS.NEW_MESSAGE, refresh);
+      socket.off(CHAT_EVENTS.MESSAGE_UPDATED, refresh);
     };
   }, [user, refresh]);
 

@@ -254,6 +254,17 @@ describe("ChatService", () => {
       transactionId: "txn-1",
     };
 
+    beforeEach(() => {
+      userService.findActiveById.mockResolvedValue(activeUser("u2"));
+    });
+
+    it("rejects a dormant/gone caller before ever loading the message", async () => {
+      userService.findActiveById.mockResolvedValue(null);
+      await expect(service.acceptTransfer("u2", "m1")).rejects.toThrow(WsException);
+      expect(prisma.chatMessage.findUnique).not.toHaveBeenCalled();
+      expect(transactionService.acceptTransfer).not.toHaveBeenCalled();
+    });
+
     it("rejects when the message doesn't exist", async () => {
       prisma.chatMessage.findUnique.mockResolvedValue(null);
       await expect(service.acceptTransfer("u2", "m1")).rejects.toThrow(WsException);
@@ -309,6 +320,17 @@ describe("ChatService", () => {
       type: "TRANSFER",
       transactionId: "txn-1",
     };
+
+    beforeEach(() => {
+      userService.findActiveById.mockResolvedValue(activeUser("u2"));
+    });
+
+    it("rejects a dormant/gone caller before ever loading the message", async () => {
+      userService.findActiveById.mockResolvedValue(null);
+      await expect(service.rejectTransfer("u2", "m1")).rejects.toThrow(WsException);
+      expect(prisma.chatMessage.findUnique).not.toHaveBeenCalled();
+      expect(transactionService.rejectTransfer).not.toHaveBeenCalled();
+    });
 
     it("rejects a caller who isn't a member of the room", async () => {
       prisma.chatMessage.findUnique.mockResolvedValue(pendingMessage);

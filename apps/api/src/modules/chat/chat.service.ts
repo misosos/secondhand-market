@@ -123,6 +123,7 @@ export class ChatService {
   // transaction's recorded recipient (sellerId) — assertMember here only
   // confirms the caller is even in this DM at all.
   async acceptTransfer(userId: string, messageId: string): Promise<ChatMessageDto> {
+    await this.assertActive(userId);
     const message = await this.getTransferMessageOrThrow(messageId);
     await this.assertMember(message.roomId, userId);
     await this.transactionService.acceptTransfer(message.transactionId as string, userId);
@@ -132,6 +133,7 @@ export class ChatService {
   // 거절: same authority check as acceptTransfer; TransactionService
   // refunds the sender automatically as part of the same DB transaction.
   async rejectTransfer(userId: string, messageId: string): Promise<ChatMessageDto> {
+    await this.assertActive(userId);
     const message = await this.getTransferMessageOrThrow(messageId);
     await this.assertMember(message.roomId, userId);
     await this.transactionService.rejectTransfer(message.transactionId as string, userId);
