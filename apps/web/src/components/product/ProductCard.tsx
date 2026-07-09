@@ -14,7 +14,7 @@ export function ProductCard({ product }: { product: ProductSummary }) {
     if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
     if (!supportsViewTransitions() || prefersReducedMotion()) return;
     event.preventDefault();
-    navigateWithMorph(router, `/products/${product.id}`);
+    navigateWithMorph(router, `/products/${product.id}`, `product-thumb-${product.id}`);
   }
 
   return (
