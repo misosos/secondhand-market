@@ -114,10 +114,19 @@ export class AdminService {
     const newStatus = decision === "RESOLVED" ? PrismaReportStatus.RESOLVED : PrismaReportStatus.REJECTED;
 
     await this.prisma.$transaction(async (tx) => {
-      await tx.report.update({
-        where: { id: reportId },
+      // Guarded the same way as every other "settle exactly once" write in
+      // this codebase (product purchase, chat transfer accept/reject): a
+      // plain update here would let two concurrent review calls on the same
+      // report (two admin tabs, or an impatient double-click) both pass the
+      // findUnique check above and each apply their own reportCount
+      // decrement/reactivation below, double-processing a single report.
+      const reportUpdate = await tx.report.updateMany({
+        where: { id: reportId, status: PrismaReportStatus.PENDING },
         data: { status: newStatus, reviewedById: reviewerId, reviewedAt: new Date() },
       });
+      if (reportUpdate.count === 0) {
+        throw new ConflictException("Report has already been reviewed");
+      }
       if (decision !== "REJECTED") return;
 
       if (report.targetType === PrismaReportTargetType.USER && report.targetUserId) {

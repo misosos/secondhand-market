@@ -16,7 +16,7 @@ describe("AdminService", () => {
     $transaction: jest.Mock;
   };
   let tx: {
-    report: { update: jest.Mock; updateMany: jest.Mock };
+    report: { updateMany: jest.Mock };
     user: { update: jest.Mock };
     product: { update: jest.Mock };
   };
@@ -26,7 +26,7 @@ describe("AdminService", () => {
 
   beforeEach(async () => {
     tx = {
-      report: { update: jest.fn(), updateMany: jest.fn() },
+      report: { updateMany: jest.fn() },
       user: { update: jest.fn() },
       product: { update: jest.fn() },
     };
@@ -92,13 +92,27 @@ describe("AdminService", () => {
         targetType: ReportTargetType.USER,
         targetUserId: "target-1",
       });
+      tx.report.updateMany.mockResolvedValue({ count: 1 });
 
       await service.reviewReport("r1", "RESOLVED", "admin-1");
 
-      expect(tx.report.update).toHaveBeenCalledWith({
-        where: { id: "r1" },
+      expect(tx.report.updateMany).toHaveBeenCalledWith({
+        where: { id: "r1", status: ReportStatus.PENDING },
         data: { status: ReportStatus.RESOLVED, reviewedById: "admin-1", reviewedAt: expect.any(Date) },
       });
+      expect(tx.user.update).not.toHaveBeenCalled();
+    });
+
+    it("rejects a concurrent double-review (updateMany count guard) without double-applying the decrement", async () => {
+      prisma.report.findUnique.mockResolvedValue({
+        id: "r1",
+        status: ReportStatus.PENDING,
+        targetType: ReportTargetType.USER,
+        targetUserId: "target-1",
+      });
+      tx.report.updateMany.mockResolvedValue({ count: 0 });
+
+      await expect(service.reviewReport("r1", "REJECTED", "admin-1")).rejects.toThrow(ConflictException);
       expect(tx.user.update).not.toHaveBeenCalled();
     });
 
@@ -109,6 +123,7 @@ describe("AdminService", () => {
         targetType: ReportTargetType.USER,
         targetUserId: "target-1",
       });
+      tx.report.updateMany.mockResolvedValue({ count: 1 });
       tx.user.update.mockResolvedValueOnce({
         id: "target-1",
         reportCount: BLOCK_THRESHOLD - 1,
@@ -134,6 +149,7 @@ describe("AdminService", () => {
         targetType: ReportTargetType.PRODUCT,
         targetProductId: "product-1",
       });
+      tx.report.updateMany.mockResolvedValue({ count: 1 });
       tx.product.update.mockResolvedValueOnce({
         id: "product-1",
         reportCount: BLOCK_THRESHOLD,
