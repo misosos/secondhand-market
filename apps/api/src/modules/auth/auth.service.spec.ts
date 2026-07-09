@@ -54,6 +54,7 @@ describe("AuthService", () => {
             JWT_ACCESS_SECRET: "access-secret",
             JWT_REFRESH_SECRET: "refresh-secret",
             JWT_REFRESH_EXPIRES_IN: "7d",
+            SIGNUP_INITIAL_BALANCE: 100_000,
           })[key],
       ),
     };
@@ -90,7 +91,7 @@ describe("AuthService", () => {
 
       expect(bcrypt.hash).toHaveBeenCalledWith("password123", expect.any(Number));
       expect(prisma.user.create).toHaveBeenCalledWith({
-        data: { username: "alice", password: "hashed-value" },
+        data: { username: "alice", password: "hashed-value", balance: 100_000 },
       });
     });
 

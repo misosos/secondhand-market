@@ -1,0 +1,76 @@
+.tabs {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.tab {
+  padding: 7px 16px;
+  border-radius: 999px;
+  border: 1px solid transparent;
+  background: var(--color-bg-elevated);
+  color: var(--color-muted);
+  font-size: 13px;
+  font-weight: 590;
+  cursor: pointer;
+  transition: transform 0.4s var(--spring), background 0.2s ease, color 0.2s ease;
+}
+
+.tab:active {
+  transform: scale(0.95);
+  transition: transform 0.12s var(--ease-press);
+}
+
+.tabActive {
+  background: var(--color-primary);
+  color: #fff;
+}
+
+.empty {
+  color: var(--color-muted);
+  font-size: 14px;
+}
+
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.card {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border: 1px solid var(--color-border);
+  border-radius: 16px;
+  padding: 14px 16px;
+  background: var(--color-surface);
+}
+
+.username {
+  font-weight: 700;
+  font-size: 14px;
+}
+
+.meta {
+  font-size: 12px;
+  color: var(--color-muted);
+}
+
+.statusBadge {
+  font-size: 12px;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 999px;
+  margin-left: 8px;
+}
+
+.statusActive {
+  background: var(--color-accent-secondary);
+  color: #fff;
+}
+
+.statusDormant {
+  background: var(--color-danger-bg);
+  color: var(--color-danger);
+}

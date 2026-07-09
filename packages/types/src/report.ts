@@ -24,6 +24,8 @@ export interface ReviewReportRequest {
 
 export interface AdminReportDto extends ReportDto {
   reporter: { id: string; username: string };
+  reviewedBy: { id: string; username: string } | null;
+  reviewedAt: string | null;
   target: {
     type: ReportTargetType;
     id: string;

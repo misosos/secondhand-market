@@ -7,6 +7,7 @@ export interface PublicUser {
   bio: string | null;
   status: AccountStatus;
   role: Role;
+  balance: number;
   createdAt: string;
 }
 
@@ -36,4 +37,20 @@ export interface UpdateProfileRequest {
 export interface ChangePasswordRequest {
   currentPassword: string;
   newPassword: string;
+}
+
+// Admin-only view — a superset of PublicUser with moderation-relevant
+// fields (reportCount) that regular profile views don't need to expose.
+export interface AdminUserDto {
+  id: string;
+  username: string;
+  status: AccountStatus;
+  role: Role;
+  balance: number;
+  reportCount: number;
+  createdAt: string;
+}
+
+export interface SetUserStatusRequest {
+  status: AccountStatus;
 }

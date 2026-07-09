@@ -61,6 +61,11 @@ class EnvironmentVariables {
   REPORT_BLOCK_THRESHOLD: number = 5;
 
   @IsInt()
+  @Min(0)
+  @IsOptional()
+  SIGNUP_INITIAL_BALANCE: number = 100_000;
+
+  @IsInt()
   @Min(1)
   @IsOptional()
   THROTTLE_TTL_MS: number = 60_000;

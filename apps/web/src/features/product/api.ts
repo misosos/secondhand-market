@@ -1,4 +1,10 @@
-import type { CreateProductRequest, PresignedUploadResponse, ProductDetail, UpdateProductRequest } from "@secondhand/types";
+import type {
+  CreateProductRequest,
+  PresignedUploadResponse,
+  ProductDetail,
+  TransactionDto,
+  UpdateProductRequest,
+} from "@secondhand/types";
 import { api } from "@/lib/api";
 
 export function createProduct(dto: CreateProductRequest): Promise<ProductDetail> {
@@ -11,6 +17,10 @@ export function updateProduct(id: string, dto: UpdateProductRequest): Promise<Pr
 
 export function deleteProduct(id: string): Promise<void> {
   return api.delete<void>(`/products/${id}`);
+}
+
+export function purchaseProduct(productId: string): Promise<TransactionDto> {
+  return api.post<TransactionDto>("/transactions", { productId });
 }
 
 function requestPresignedUpload(fileName: string, contentType: string): Promise<PresignedUploadResponse> {

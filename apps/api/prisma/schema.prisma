@@ -42,32 +42,41 @@ model User {
   status      AccountStatus @default(ACTIVE)
   role        Role          @default(USER)
   reportCount Int           @default(0)
+  // Virtual wallet balance (KRW-won-denominated integer, same unit as
+  // Product.price). No real payment gateway backs this — signup grants a
+  // configurable starting balance (see SIGNUP_INITIAL_BALANCE) and it only
+  // ever moves between users via a Transaction (product purchase).
+  balance     Int           @default(0)
   createdAt   DateTime      @default(now())
   updatedAt   DateTime      @updatedAt
   deletedAt   DateTime?
 
-  products    Product[]
-  reportsMade Report[]      @relation("Reporter")
-  reportsGot  Report[]      @relation("ReportedUser")
-  messages    ChatMessage[]
+  products        Product[]
+  reportsMade     Report[]      @relation("Reporter")
+  reportsGot      Report[]      @relation("ReportedUser")
+  reportsReviewed Report[]      @relation("ReportReviewedBy")
+  messages        ChatMessage[]
+  purchases       Transaction[] @relation("Purchases")
+  sales           Transaction[] @relation("Sales")
 
   @@index([status])
 }
 
 model Product {
-  id          String         @id @default(uuid())
-  name        String
-  description String         @db.Text
-  price       Int
-  status      ProductStatus  @default(ACTIVE)
-  reportCount Int            @default(0)
-  sellerId    String
-  seller      User           @relation(fields: [sellerId], references: [id])
-  images      ProductImage[]
-  reportsGot  Report[]       @relation("ReportedProduct")
-  createdAt   DateTime       @default(now())
-  updatedAt   DateTime       @updatedAt
-  deletedAt   DateTime?
+  id           String         @id @default(uuid())
+  name         String
+  description  String         @db.Text
+  price        Int
+  status       ProductStatus  @default(ACTIVE)
+  reportCount  Int            @default(0)
+  sellerId     String
+  seller       User           @relation(fields: [sellerId], references: [id])
+  images       ProductImage[]
+  reportsGot   Report[]       @relation("ReportedProduct")
+  transactions Transaction[]
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+  deletedAt    DateTime?
 
   @@index([status, createdAt])
   @@index([sellerId])
@@ -95,8 +104,34 @@ model Report {
   targetProductId String?
   targetProduct   Product? @relation("ReportedProduct", fields: [targetProductId], references: [id])
 
+  // Audit trail for admin review actions (who decided, and when) — the
+  // status column alone can't answer "who approved this" after the fact.
+  reviewedById String?
+  reviewedBy   User?     @relation("ReportReviewedBy", fields: [reviewedById], references: [id])
+  reviewedAt   DateTime?
+
   @@unique([reporterId, targetUserId])
   @@unique([reporterId, targetProductId])
+}
+
+// A completed product purchase, and the only way balance ever moves between
+// users. Created atomically alongside the buyer/seller balance updates and
+// the product's ACTIVE -> SOLD flip (see TransactionService.purchase) so
+// this row is always a truthful record of a transfer that actually
+// happened — never created speculatively or before funds move.
+model Transaction {
+  id        String   @id @default(uuid())
+  buyerId   String
+  buyer     User     @relation("Purchases", fields: [buyerId], references: [id])
+  sellerId  String
+  seller    User     @relation("Sales", fields: [sellerId], references: [id])
+  productId String
+  product   Product  @relation(fields: [productId], references: [id])
+  amount    Int
+  createdAt DateTime @default(now())
+
+  @@index([buyerId])
+  @@index([sellerId])
 }
 
 model ChatRoom {

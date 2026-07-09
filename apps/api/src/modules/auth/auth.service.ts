@@ -33,7 +33,13 @@ export class AuthService {
     const passwordHash = await bcrypt.hash(dto.password, BCRYPT_SALT_ROUNDS);
     try {
       const user = await this.prisma.user.create({
-        data: { username: dto.username, password: passwordHash },
+        data: {
+          username: dto.username,
+          password: passwordHash,
+          // Virtual starting balance — there's no real payment gateway
+          // backing this wallet, see the note on User.balance in schema.prisma.
+          balance: this.configService.get<number>("SIGNUP_INITIAL_BALANCE")!,
+        },
       });
       return this.userService.toPublicUser(user);
     } catch (error: unknown) {

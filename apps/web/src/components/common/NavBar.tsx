@@ -23,8 +23,10 @@ export function NavBar() {
                 <Link href="/mypage/products">내 상품</Link>
                 <Link href="/chat">채팅</Link>
                 <Link href="/chat/global">전체채팅</Link>
+                <Link href="/mypage/transactions">거래내역</Link>
                 <Link href="/mypage">마이페이지</Link>
                 {user.role === Role.ADMIN && <Link href="/admin/reports">관리자</Link>}
+                <span className={styles.balance}>{user.balance.toLocaleString()}원</span>
                 <button className={styles.logoutButton} onClick={() => logout()}>
                   로그아웃
                 </button>

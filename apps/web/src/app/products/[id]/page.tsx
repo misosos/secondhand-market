@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { ReportTargetType } from "@secondhand/types";
+import { ProductStatus, ReportTargetType } from "@secondhand/types";
 import { Button } from "@/components/common/Button";
 import { ErrorMessage } from "@/components/common/ErrorMessage";
 import { Spinner } from "@/components/common/Spinner";
@@ -11,20 +11,24 @@ import { ChatEntryButton } from "@/components/chat/ChatEntryButton";
 import { ReportButton } from "@/components/report/ReportButton";
 import { useAuth } from "@/features/auth/useAuth";
 import { useProductDetail } from "@/features/product/useProductDetail";
-import { deleteProduct } from "@/features/product/api";
+import { deleteProduct, purchaseProduct } from "@/features/product/api";
+import { ApiError } from "@/lib/api";
 import styles from "./page.module.css";
 
 export default function ProductDetailPage({ params }: { params: { id: string } }) {
-  const { user } = useAuth();
-  const { product, isLoading, error } = useProductDetail(params.id);
+  const { user, refreshUser } = useAuth();
+  const { product, isLoading, error, reload } = useProductDetail(params.id);
   const [activeImage, setActiveImage] = useState(0);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [isPurchasing, setIsPurchasing] = useState(false);
+  const [purchaseError, setPurchaseError] = useState<string | null>(null);
   const router = useRouter();
 
   if (isLoading) return <Spinner />;
   if (error || !product) return <ErrorMessage>{error ?? "상품을 찾을 수 없습니다."}</ErrorMessage>;
 
   const isOwner = user?.id === product.sellerId;
+  const isPurchasable = product.status === ProductStatus.ACTIVE;
 
   async function handleDelete() {
     if (!confirm("정말 삭제하시겠습니까?")) return;
@@ -34,6 +38,20 @@ export default function ProductDetailPage({ params }: { params: { id: string } }
       router.push("/");
     } finally {
       setIsDeleting(false);
+    }
+  }
+
+  async function handlePurchase() {
+    if (!confirm(`${product!.price.toLocaleString()}원에 구매하시겠습니까?`)) return;
+    setIsPurchasing(true);
+    setPurchaseError(null);
+    try {
+      await purchaseProduct(product!.id);
+      await Promise.all([reload(), refreshUser()]);
+    } catch (err) {
+      setPurchaseError(err instanceof ApiError ? err.message : "구매에 실패했습니다.");
+    } finally {
+      setIsPurchasing(false);
     }
   }
 
@@ -84,7 +102,13 @@ export default function ProductDetailPage({ params }: { params: { id: string } }
             <span>최종 결제 금액</span>
             <span className={styles.val}>{product.price.toLocaleString()}원</span>
           </div>
-          <p className={styles.priceFootnote}>거래 확정 전 언제든 취소할 수 있어요 · 숨겨진 수수료 없음</p>
+          <p className={styles.priceFootnote}>
+            {product.status === ProductStatus.SOLD
+              ? "이미 판매 완료된 상품입니다."
+              : product.status === ProductStatus.BLOCKED
+                ? "신고 누적으로 비공개 처리된 상품입니다."
+                : "거래 확정 전 언제든 취소할 수 있어요 · 숨겨진 수수료 없음"}
+          </p>
         </div>
 
         <p className={styles.seller}>
@@ -94,6 +118,8 @@ export default function ProductDetailPage({ params }: { params: { id: string } }
           </Link>
         </p>
         <p className={styles.description}>{product.description}</p>
+
+        <ErrorMessage>{purchaseError}</ErrorMessage>
 
         <div className={styles.actions}>
           {isOwner ? (
@@ -108,6 +134,11 @@ export default function ProductDetailPage({ params }: { params: { id: string } }
           ) : (
             user && (
               <>
+                {isPurchasable && (
+                  <Button onClick={handlePurchase} disabled={isPurchasing}>
+                    {isPurchasing ? "구매 중..." : "구매하기"}
+                  </Button>
+                )}
                 <ChatEntryButton peerId={product.sellerId} peerUsername="판매자" />
                 <ReportButton targetType={ReportTargetType.PRODUCT} targetId={product.id} label="상품 신고" />
               </>

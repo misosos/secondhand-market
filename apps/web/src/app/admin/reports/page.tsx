@@ -1,10 +1,11 @@
 "use client";
 
 import { useState } from "react";
-import { ReportStatus, type ReportDecision } from "@secondhand/types";
+import { ReportStatus, ReportTargetType, type ReportDecision } from "@secondhand/types";
 import { Button } from "@/components/common/Button";
 import { ErrorMessage } from "@/components/common/ErrorMessage";
 import { Spinner } from "@/components/common/Spinner";
+import { AdminSectionNav } from "@/components/admin/AdminSectionNav";
 import { useRequireAuth } from "@/features/auth/useRequireAuth";
 import { useAdminReports } from "@/features/admin/useAdminReports";
 import styles from "./page.module.css";
@@ -19,7 +20,7 @@ const TABS: { label: string; value: ReportStatus | "ALL" }[] = [
 export default function AdminReportsPage() {
   const { isLoading: authLoading } = useRequireAuth();
   const [tab, setTab] = useState<ReportStatus | "ALL">(ReportStatus.PENDING);
-  const { reports, isLoading, error, review } = useAdminReports(tab);
+  const { reports, isLoading, error, review, removeProduct } = useAdminReports(tab);
   const [pendingActionId, setPendingActionId] = useState<string | null>(null);
 
   if (authLoading) return <Spinner />;
@@ -33,9 +34,20 @@ export default function AdminReportsPage() {
     }
   }
 
+  async function handleDeleteProduct(reportId: string, productId: string) {
+    if (!confirm("이 상품을 삭제하시겠습니까? 되돌릴 수 없습니다.")) return;
+    setPendingActionId(reportId);
+    try {
+      await removeProduct(productId);
+    } finally {
+      setPendingActionId(null);
+    }
+  }
+
   return (
     <div>
       <h1 style={{ fontSize: 20, fontWeight: 800, marginBottom: 16 }}>신고 관리</h1>
+      <AdminSectionNav />
 
       <div className={styles.tabs}>
         {TABS.map((t) => (
@@ -67,24 +79,40 @@ export default function AdminReportsPage() {
             <p className={styles.meta}>
               신고자 {report.reporter.username} · {new Date(report.createdAt).toLocaleString()}
             </p>
-            {report.status === ReportStatus.PENDING && (
-              <div className={styles.actions}>
-                <Button
-                  variant="secondary"
-                  disabled={pendingActionId === report.id}
-                  onClick={() => handleReview(report.id, "RESOLVED")}
-                >
-                  신고 인정
-                </Button>
+            {report.reviewedBy && report.reviewedAt && (
+              <p className={styles.meta}>
+                처리자 {report.reviewedBy.username} · {new Date(report.reviewedAt).toLocaleString()}
+              </p>
+            )}
+            <div className={styles.actions}>
+              {report.status === ReportStatus.PENDING && (
+                <>
+                  <Button
+                    variant="secondary"
+                    disabled={pendingActionId === report.id}
+                    onClick={() => handleReview(report.id, "RESOLVED")}
+                  >
+                    신고 인정
+                  </Button>
+                  <Button
+                    variant="danger"
+                    disabled={pendingActionId === report.id}
+                    onClick={() => handleReview(report.id, "REJECTED")}
+                  >
+                    반려 (대상 복구)
+                  </Button>
+                </>
+              )}
+              {report.targetType === ReportTargetType.PRODUCT && (
                 <Button
                   variant="danger"
                   disabled={pendingActionId === report.id}
-                  onClick={() => handleReview(report.id, "REJECTED")}
+                  onClick={() => handleDeleteProduct(report.id, report.target.id)}
                 >
-                  반려 (대상 복구)
+                  상품 삭제
                 </Button>
-              </div>
-            )}
+              )}
+            </div>
           </li>
         ))}
       </ul>

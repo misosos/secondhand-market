@@ -38,5 +38,16 @@ export function useAdminReports(status: ReportStatus | "ALL") {
     [refresh],
   );
 
-  return { reports, isLoading, error, review };
+  const removeProduct = useCallback(
+    async (productId: string) => {
+      await api.delete(`/admin/products/${productId}`);
+      // Deleting the product also auto-resolves any PENDING reports against
+      // it server-side (see AdminService.deleteProduct), so refetch rather
+      // than just dropping this one row.
+      await refresh();
+    },
+    [refresh],
+  );
+
+  return { reports, isLoading, error, review, removeProduct };
 }

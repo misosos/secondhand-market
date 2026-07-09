@@ -60,6 +60,7 @@ export class UserService {
       // distinct TS types with identical string values at runtime.
       status: user.status as unknown as AccountStatus,
       role: user.role as unknown as Role,
+      balance: user.balance,
       createdAt: user.createdAt.toISOString(),
     };
   }
