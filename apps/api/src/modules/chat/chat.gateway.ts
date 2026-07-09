@@ -19,6 +19,7 @@ import { ChatHistoryQueryDto } from "./dto/chat-history-query.dto";
 import { JoinRoomDto } from "./dto/join-room.dto";
 import { SendMessageDto } from "./dto/send-message.dto";
 import { SendTransferDto } from "./dto/send-transfer.dto";
+import { TransferDecisionDto } from "./dto/transfer-decision.dto";
 
 @WebSocketGateway({
   cors: { origin: process.env.CORS_ORIGIN ?? "http://localhost:3000", credentials: true },
@@ -112,10 +113,34 @@ export class ChatGateway implements OnGatewayConnection {
     const message = await this.chatService.sendTransfer(userId, dto.roomId, dto.amount);
 
     // Same persist-then-broadcast path as a regular message (see
-    // handleSend) — the transfer already happened by the time this emits,
-    // so both sides seeing it appear is just a UI reflection of money that
-    // has already moved.
+    // handleSend) — the sender's balance was already debited by the time
+    // this emits, but the message starts life PENDING until the recipient
+    // taps 받기/거절 (see handleAcceptTransfer/handleRejectTransfer).
     this.server.to(dto.roomId).emit(CHAT_EVENTS.NEW_MESSAGE, message);
+
+    return message;
+  }
+
+  @SubscribeMessage(CHAT_EVENTS.ACCEPT_TRANSFER)
+  async handleAcceptTransfer(@ConnectedSocket() client: Socket, @MessageBody() dto: TransferDecisionDto) {
+    const userId = this.userId(client);
+    const message = await this.chatService.acceptTransfer(userId, dto.messageId);
+
+    // Broadcast the settled message to the whole room (including the
+    // acceptor's own socket) rather than relying on this handler's ack —
+    // every open tab on either side needs its bubble/buttons to update, not
+    // just the one that clicked.
+    this.server.to(message.roomId).emit(CHAT_EVENTS.MESSAGE_UPDATED, message);
+
+    return message;
+  }
+
+  @SubscribeMessage(CHAT_EVENTS.REJECT_TRANSFER)
+  async handleRejectTransfer(@ConnectedSocket() client: Socket, @MessageBody() dto: TransferDecisionDto) {
+    const userId = this.userId(client);
+    const message = await this.chatService.rejectTransfer(userId, dto.messageId);
+
+    this.server.to(message.roomId).emit(CHAT_EVENTS.MESSAGE_UPDATED, message);
 
     return message;
   }

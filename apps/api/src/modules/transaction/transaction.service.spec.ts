@@ -1,6 +1,6 @@
 import { Test } from "@nestjs/testing";
 import { BadRequestException, ConflictException, ForbiddenException, NotFoundException } from "@nestjs/common";
-import { AccountStatus, ProductStatus } from "@prisma/client";
+import { AccountStatus, ProductStatus, TransactionStatus } from "@prisma/client";
 import { TransactionService } from "./transaction.service";
 import { PrismaService } from "../../infra/prisma/prisma.service";
 import { UserService } from "../user/user.service";
@@ -9,12 +9,13 @@ describe("TransactionService", () => {
   let service: TransactionService;
   let prisma: {
     product: { findFirst: jest.Mock };
+    transaction: { findUnique: jest.Mock };
     $transaction: jest.Mock;
   };
   let tx: {
     product: { updateMany: jest.Mock };
     user: { updateMany: jest.Mock; update: jest.Mock };
-    transaction: { create: jest.Mock };
+    transaction: { create: jest.Mock; updateMany: jest.Mock; findUniqueOrThrow: jest.Mock };
   };
   let userService: { findActiveById: jest.Mock };
 
@@ -31,10 +32,11 @@ describe("TransactionService", () => {
     tx = {
       product: { updateMany: jest.fn() },
       user: { updateMany: jest.fn(), update: jest.fn() },
-      transaction: { create: jest.fn() },
+      transaction: { create: jest.fn(), updateMany: jest.fn(), findUniqueOrThrow: jest.fn() },
     };
     prisma = {
       product: { findFirst: jest.fn() },
+      transaction: { findUnique: jest.fn() },
       $transaction: jest.fn((callback: (tx: unknown) => unknown) => callback(tx)),
     };
     userService = { findActiveById: jest.fn() };
@@ -116,6 +118,7 @@ describe("TransactionService", () => {
         id: "txn-1",
         productId: "product-1",
         amount: 5_000,
+        status: TransactionStatus.COMPLETED,
         createdAt: new Date("2026-01-01T00:00:00Z"),
         buyer: { id: "buyer-1", username: "buyer" },
         seller: { id: "seller-1", username: "seller" },
@@ -143,51 +146,52 @@ describe("TransactionService", () => {
         buyer: { id: "buyer-1", username: "buyer" },
         seller: { id: "seller-1", username: "seller" },
         amount: 5_000,
+        status: "COMPLETED",
         createdAt: "2026-01-01T00:00:00.000Z",
       });
     });
   });
 
-  describe("transferBalance", () => {
+  describe("initiateTransfer", () => {
     const activeRecipient = { id: "recipient-1", status: AccountStatus.ACTIVE, balance: 0 };
 
     it("rejects sending money to yourself, before ever touching the db", async () => {
-      await expect(service.transferBalance("u1", "u1", 1000)).rejects.toThrow(BadRequestException);
+      await expect(service.initiateTransfer("u1", "u1", 1000)).rejects.toThrow(BadRequestException);
       expect(userService.findActiveById).not.toHaveBeenCalled();
     });
 
     it("rejects a non-positive or non-integer amount", async () => {
-      await expect(service.transferBalance("sender-1", "recipient-1", 0)).rejects.toThrow(BadRequestException);
-      await expect(service.transferBalance("sender-1", "recipient-1", 1.5)).rejects.toThrow(BadRequestException);
+      await expect(service.initiateTransfer("sender-1", "recipient-1", 0)).rejects.toThrow(BadRequestException);
+      await expect(service.initiateTransfer("sender-1", "recipient-1", 1.5)).rejects.toThrow(BadRequestException);
     });
 
     it("rejects when the sender doesn't exist", async () => {
       userService.findActiveById.mockResolvedValueOnce(null);
-      await expect(service.transferBalance("sender-1", "recipient-1", 1000)).rejects.toThrow(NotFoundException);
+      await expect(service.initiateTransfer("sender-1", "recipient-1", 1000)).rejects.toThrow(NotFoundException);
     });
 
     it("rejects a dormant sender", async () => {
       userService.findActiveById.mockResolvedValueOnce({ ...activeBuyer, status: AccountStatus.DORMANT });
-      await expect(service.transferBalance("sender-1", "recipient-1", 1000)).rejects.toThrow(ForbiddenException);
+      await expect(service.initiateTransfer("sender-1", "recipient-1", 1000)).rejects.toThrow(ForbiddenException);
     });
 
     it("rejects when the recipient doesn't exist", async () => {
       userService.findActiveById.mockResolvedValueOnce(activeBuyer).mockResolvedValueOnce(null);
-      await expect(service.transferBalance("sender-1", "recipient-1", 1000)).rejects.toThrow(NotFoundException);
+      await expect(service.initiateTransfer("sender-1", "recipient-1", 1000)).rejects.toThrow(NotFoundException);
     });
 
     it("rejects sending to a dormant recipient", async () => {
       userService.findActiveById
         .mockResolvedValueOnce(activeBuyer)
         .mockResolvedValueOnce({ ...activeRecipient, status: AccountStatus.DORMANT });
-      await expect(service.transferBalance("sender-1", "recipient-1", 1000)).rejects.toThrow(ForbiddenException);
+      await expect(service.initiateTransfer("sender-1", "recipient-1", 1000)).rejects.toThrow(ForbiddenException);
     });
 
     it("rejects when the sender's balance is below the amount", async () => {
       userService.findActiveById
         .mockResolvedValueOnce({ ...activeBuyer, balance: 500 })
         .mockResolvedValueOnce(activeRecipient);
-      await expect(service.transferBalance("sender-1", "recipient-1", 1000)).rejects.toThrow(BadRequestException);
+      await expect(service.initiateTransfer("sender-1", "recipient-1", 1000)).rejects.toThrow(BadRequestException);
       expect(prisma.$transaction).not.toHaveBeenCalled();
     });
 
@@ -195,35 +199,34 @@ describe("TransactionService", () => {
       userService.findActiveById.mockResolvedValueOnce(activeBuyer).mockResolvedValueOnce(activeRecipient);
       tx.user.updateMany.mockResolvedValue({ count: 0 });
 
-      await expect(service.transferBalance("sender-1", "recipient-1", 1000)).rejects.toThrow(BadRequestException);
-      expect(tx.user.update).not.toHaveBeenCalled();
+      await expect(service.initiateTransfer("sender-1", "recipient-1", 1000)).rejects.toThrow(BadRequestException);
+      expect(tx.transaction.create).not.toHaveBeenCalled();
     });
 
-    it("moves balance with no product involved, and records a productId:null transaction", async () => {
+    it("debits the sender only (recipient not credited yet), and records a PENDING transaction", async () => {
       userService.findActiveById.mockResolvedValueOnce(activeBuyer).mockResolvedValueOnce(activeRecipient);
       tx.user.updateMany.mockResolvedValue({ count: 1 });
       tx.transaction.create.mockResolvedValue({
         id: "txn-2",
         productId: null,
         amount: 3_000,
+        status: TransactionStatus.PENDING,
         createdAt: new Date("2026-01-01T00:00:00Z"),
         buyer: { id: "sender-1", username: "sender" },
         seller: { id: "recipient-1", username: "recipient" },
         product: null,
       });
 
-      const dto = await service.transferBalance("sender-1", "recipient-1", 3_000);
+      const dto = await service.initiateTransfer("sender-1", "recipient-1", 3_000);
 
       expect(tx.user.updateMany).toHaveBeenCalledWith({
         where: { id: "sender-1", balance: { gte: 3_000 } },
         data: { balance: { decrement: 3_000 } },
       });
-      expect(tx.user.update).toHaveBeenCalledWith({
-        where: { id: "recipient-1" },
-        data: { balance: { increment: 3_000 } },
-      });
+      // Escrow hold: the recipient is not credited at send time.
+      expect(tx.user.update).not.toHaveBeenCalled();
       expect(tx.transaction.create).toHaveBeenCalledWith({
-        data: { buyerId: "sender-1", sellerId: "recipient-1", productId: null, amount: 3_000 },
+        data: { buyerId: "sender-1", sellerId: "recipient-1", productId: null, amount: 3_000, status: TransactionStatus.PENDING },
         include: { buyer: true, seller: true, product: true },
       });
       expect(dto).toEqual({
@@ -233,8 +236,118 @@ describe("TransactionService", () => {
         buyer: { id: "sender-1", username: "sender" },
         seller: { id: "recipient-1", username: "recipient" },
         amount: 3_000,
+        status: "PENDING",
         createdAt: "2026-01-01T00:00:00.000Z",
       });
+    });
+  });
+
+  describe("acceptTransfer", () => {
+    const pendingTransaction = {
+      id: "txn-3",
+      buyerId: "sender-1",
+      sellerId: "recipient-1",
+      amount: 3_000,
+      status: TransactionStatus.PENDING,
+    };
+
+    it("rejects when the transfer doesn't exist", async () => {
+      prisma.transaction.findUnique.mockResolvedValue(null);
+      await expect(service.acceptTransfer("txn-3", "recipient-1")).rejects.toThrow(NotFoundException);
+    });
+
+    it("rejects when the caller isn't the recipient", async () => {
+      prisma.transaction.findUnique.mockResolvedValue(pendingTransaction);
+      await expect(service.acceptTransfer("txn-3", "sender-1")).rejects.toThrow(ForbiddenException);
+      expect(prisma.$transaction).not.toHaveBeenCalled();
+    });
+
+    it("rejects when the transfer was already settled", async () => {
+      prisma.transaction.findUnique.mockResolvedValue({ ...pendingTransaction, status: TransactionStatus.REJECTED });
+      await expect(service.acceptTransfer("txn-3", "recipient-1")).rejects.toThrow(BadRequestException);
+    });
+
+    it("rejects a double-accept race (updateMany count guard)", async () => {
+      prisma.transaction.findUnique.mockResolvedValue(pendingTransaction);
+      tx.transaction.updateMany.mockResolvedValue({ count: 0 });
+
+      await expect(service.acceptTransfer("txn-3", "recipient-1")).rejects.toThrow(BadRequestException);
+      expect(tx.user.update).not.toHaveBeenCalled();
+    });
+
+    it("credits the recipient and flips the transaction to COMPLETED", async () => {
+      prisma.transaction.findUnique.mockResolvedValue(pendingTransaction);
+      tx.transaction.updateMany.mockResolvedValue({ count: 1 });
+      tx.transaction.findUniqueOrThrow.mockResolvedValue({
+        ...pendingTransaction,
+        productId: null,
+        status: TransactionStatus.COMPLETED,
+        createdAt: new Date("2026-01-01T00:00:00Z"),
+        buyer: { id: "sender-1", username: "sender" },
+        seller: { id: "recipient-1", username: "recipient" },
+        product: null,
+      });
+
+      const dto = await service.acceptTransfer("txn-3", "recipient-1");
+
+      expect(tx.transaction.updateMany).toHaveBeenCalledWith({
+        where: { id: "txn-3", status: TransactionStatus.PENDING },
+        data: { status: TransactionStatus.COMPLETED },
+      });
+      expect(tx.user.update).toHaveBeenCalledWith({
+        where: { id: "recipient-1" },
+        data: { balance: { increment: 3_000 } },
+      });
+      expect(dto.status).toBe("COMPLETED");
+    });
+  });
+
+  describe("rejectTransfer", () => {
+    const pendingTransaction = {
+      id: "txn-4",
+      buyerId: "sender-1",
+      sellerId: "recipient-1",
+      amount: 3_000,
+      status: TransactionStatus.PENDING,
+    };
+
+    it("rejects when the caller isn't the recipient", async () => {
+      prisma.transaction.findUnique.mockResolvedValue(pendingTransaction);
+      await expect(service.rejectTransfer("txn-4", "sender-1")).rejects.toThrow(ForbiddenException);
+    });
+
+    it("rejects a double-settlement race (updateMany count guard)", async () => {
+      prisma.transaction.findUnique.mockResolvedValue(pendingTransaction);
+      tx.transaction.updateMany.mockResolvedValue({ count: 0 });
+
+      await expect(service.rejectTransfer("txn-4", "recipient-1")).rejects.toThrow(BadRequestException);
+      expect(tx.user.update).not.toHaveBeenCalled();
+    });
+
+    it("refunds the sender (buyerId), not the recipient, and flips the transaction to REJECTED", async () => {
+      prisma.transaction.findUnique.mockResolvedValue(pendingTransaction);
+      tx.transaction.updateMany.mockResolvedValue({ count: 1 });
+      tx.transaction.findUniqueOrThrow.mockResolvedValue({
+        ...pendingTransaction,
+        productId: null,
+        status: TransactionStatus.REJECTED,
+        createdAt: new Date("2026-01-01T00:00:00Z"),
+        buyer: { id: "sender-1", username: "sender" },
+        seller: { id: "recipient-1", username: "recipient" },
+        product: null,
+      });
+
+      const dto = await service.rejectTransfer("txn-4", "recipient-1");
+
+      expect(tx.transaction.updateMany).toHaveBeenCalledWith({
+        where: { id: "txn-4", status: TransactionStatus.PENDING },
+        data: { status: TransactionStatus.REJECTED },
+      });
+      expect(tx.user.update).toHaveBeenCalledWith({
+        where: { id: "sender-1" },
+        data: { balance: { increment: 3_000 } },
+      });
+      expect(dto.status).toBe("REJECTED");
     });
   });
 });

@@ -17,12 +17,22 @@ interface ChatWindowProps {
 
 export function ChatWindow({ peerId, peerUsername, onClose }: ChatWindowProps) {
   const { user, refreshUser } = useAuth();
-  const { messages, isConnecting, error, hasMoreHistory, loadMoreHistory, sendMessage, sendTransfer } =
-    useChat(peerId);
+  const {
+    messages,
+    isConnecting,
+    error,
+    hasMoreHistory,
+    loadMoreHistory,
+    sendMessage,
+    sendTransfer,
+    acceptTransfer,
+    rejectTransfer,
+  } = useChat(peerId);
   const [draft, setDraft] = useState("");
   const [isTransferOpen, setIsTransferOpen] = useState(false);
   const [transferAmount, setTransferAmount] = useState("");
   const [isSendingTransfer, setIsSendingTransfer] = useState(false);
+  const [decidingMessageId, setDecidingMessageId] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -53,6 +63,29 @@ export function ChatWindow({ peerId, peerUsername, onClose }: ChatWindowProps) {
       // form open so the user can see it and adjust the amount.
     } finally {
       setIsSendingTransfer(false);
+    }
+  }
+
+  async function handleAccept(messageId: string) {
+    setDecidingMessageId(messageId);
+    try {
+      await acceptTransfer(messageId);
+      await refreshUser();
+    } catch {
+      // Error surfaced via the hook's `error` state already.
+    } finally {
+      setDecidingMessageId(null);
+    }
+  }
+
+  async function handleReject(messageId: string) {
+    setDecidingMessageId(messageId);
+    try {
+      await rejectTransfer(messageId);
+    } catch {
+      // Error surfaced via the hook's `error` state already.
+    } finally {
+      setDecidingMessageId(null);
     }
   }
 
@@ -91,7 +124,14 @@ export function ChatWindow({ peerId, peerUsername, onClose }: ChatWindowProps) {
           {!isConnecting && messages.length === 0 && <p className={styles.empty}>대화를 시작해보세요.</p>}
 
           {messages.map((message) => (
-            <ChatMessageBubble key={message.id} message={message} isOwn={message.senderId === user?.id} />
+            <ChatMessageBubble
+              key={message.id}
+              message={message}
+              isOwn={message.senderId === user?.id}
+              onAccept={() => handleAccept(message.id)}
+              onReject={() => handleReject(message.id)}
+              isDeciding={decidingMessageId === message.id}
+            />
           ))}
           <div ref={messagesEndRef} />
         </div>

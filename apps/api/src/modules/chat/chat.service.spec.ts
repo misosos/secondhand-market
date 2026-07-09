@@ -13,14 +13,14 @@ describe("ChatService", () => {
   let prisma: {
     $transaction: jest.Mock;
     chatMember: { findUnique: jest.Mock; findFirst: jest.Mock };
-    chatMessage: { create: jest.Mock; findMany: jest.Mock };
+    chatMessage: { create: jest.Mock; findMany: jest.Mock; findUnique: jest.Mock; findUniqueOrThrow: jest.Mock };
     chatRoom: { findMany: jest.Mock; findUnique: jest.Mock; findFirst: jest.Mock };
     user: { findMany: jest.Mock };
   };
   let tx: { $executeRaw: jest.Mock; chatRoom: { findFirst: jest.Mock; create: jest.Mock } };
   let redisClient: { incr: jest.Mock; pexpire: jest.Mock };
   let userService: { findActiveById: jest.Mock };
-  let transactionService: { transferBalance: jest.Mock };
+  let transactionService: { initiateTransfer: jest.Mock; acceptTransfer: jest.Mock; rejectTransfer: jest.Mock };
 
   const activeUser = (id: string) => ({ id, username: id, status: AccountStatus.ACTIVE });
 
@@ -32,13 +32,13 @@ describe("ChatService", () => {
     prisma = {
       $transaction: jest.fn((callback: (tx: unknown) => unknown) => callback(tx)),
       chatMember: { findUnique: jest.fn(), findFirst: jest.fn() },
-      chatMessage: { create: jest.fn(), findMany: jest.fn() },
+      chatMessage: { create: jest.fn(), findMany: jest.fn(), findUnique: jest.fn(), findUniqueOrThrow: jest.fn() },
       chatRoom: { findMany: jest.fn(), findUnique: jest.fn(), findFirst: jest.fn() },
       user: { findMany: jest.fn() },
     };
     redisClient = { incr: jest.fn(), pexpire: jest.fn() };
     userService = { findActiveById: jest.fn() };
-    transactionService = { transferBalance: jest.fn() };
+    transactionService = { initiateTransfer: jest.fn(), acceptTransfer: jest.fn(), rejectTransfer: jest.fn() };
 
     const module = await Test.createTestingModule({
       providers: [
@@ -189,32 +189,32 @@ describe("ChatService", () => {
     it("rejects sending money in the global room", async () => {
       prisma.chatRoom.findUnique.mockResolvedValue({ id: "global-room", isGlobal: true });
       await expect(service.sendTransfer("u1", "global-room", 1000)).rejects.toThrow(WsException);
-      expect(transactionService.transferBalance).not.toHaveBeenCalled();
+      expect(transactionService.initiateTransfer).not.toHaveBeenCalled();
     });
 
     it("rejects a sender who isn't a member of the room", async () => {
       prisma.chatMember.findUnique.mockResolvedValue(null);
       await expect(service.sendTransfer("u1", "room-1", 1000)).rejects.toThrow(WsException);
-      expect(transactionService.transferBalance).not.toHaveBeenCalled();
+      expect(transactionService.initiateTransfer).not.toHaveBeenCalled();
     });
 
     it("rejects when the room unexpectedly has no other member", async () => {
       prisma.chatMember.findFirst.mockResolvedValue(null);
       await expect(service.sendTransfer("u1", "room-1", 1000)).rejects.toThrow(WsException);
-      expect(transactionService.transferBalance).not.toHaveBeenCalled();
+      expect(transactionService.initiateTransfer).not.toHaveBeenCalled();
     });
 
     it("propagates TransactionService's own rejection (e.g. insufficient balance) without creating a message", async () => {
       prisma.chatMember.findFirst.mockResolvedValue({ roomId: "room-1", userId: "u2" });
-      transactionService.transferBalance.mockRejectedValue(new Error("Insufficient balance"));
+      transactionService.initiateTransfer.mockRejectedValue(new Error("Insufficient balance"));
 
       await expect(service.sendTransfer("u1", "room-1", 1000)).rejects.toThrow("Insufficient balance");
       expect(prisma.chatMessage.create).not.toHaveBeenCalled();
     });
 
-    it("moves the balance via TransactionService, then records a TRANSFER message", async () => {
+    it("debits via TransactionService.initiateTransfer, then records a PENDING TRANSFER message", async () => {
       prisma.chatMember.findFirst.mockResolvedValue({ roomId: "room-1", userId: "u2" });
-      transactionService.transferBalance.mockResolvedValue({ amount: 5000 });
+      transactionService.initiateTransfer.mockResolvedValue({ id: "txn-1", amount: 5000 });
       prisma.chatMessage.create.mockResolvedValue({
         id: "m1",
         roomId: "room-1",
@@ -224,16 +224,116 @@ describe("ChatService", () => {
         amount: 5000,
         createdAt: new Date(),
         sender: { username: "u1" },
+        transaction: { status: "PENDING" },
       });
 
       const message = await service.sendTransfer("u1", "room-1", 5000);
 
-      expect(transactionService.transferBalance).toHaveBeenCalledWith("u1", "u2", 5000);
+      expect(transactionService.initiateTransfer).toHaveBeenCalledWith("u1", "u2", 5000);
       expect(prisma.chatMessage.create).toHaveBeenCalledWith({
-        data: { roomId: "room-1", senderId: "u1", type: "TRANSFER", amount: 5000, content: "5,000원을 보냈습니다" },
-        include: { sender: true },
+        data: {
+          roomId: "room-1",
+          senderId: "u1",
+          type: "TRANSFER",
+          amount: 5000,
+          transactionId: "txn-1",
+          content: "5,000원을 보냈습니다",
+        },
+        include: { sender: true, transaction: true },
       });
-      expect(message).toMatchObject({ id: "m1", type: "TRANSFER", amount: 5000 });
+      expect(message).toMatchObject({ id: "m1", type: "TRANSFER", amount: 5000, transactionStatus: "PENDING" });
+    });
+  });
+
+  describe("acceptTransfer", () => {
+    const pendingMessage = {
+      id: "m1",
+      roomId: "room-1",
+      senderId: "u1",
+      type: "TRANSFER",
+      transactionId: "txn-1",
+    };
+
+    it("rejects when the message doesn't exist", async () => {
+      prisma.chatMessage.findUnique.mockResolvedValue(null);
+      await expect(service.acceptTransfer("u2", "m1")).rejects.toThrow(WsException);
+      expect(transactionService.acceptTransfer).not.toHaveBeenCalled();
+    });
+
+    it("rejects a non-transfer message", async () => {
+      prisma.chatMessage.findUnique.mockResolvedValue({ ...pendingMessage, type: "TEXT", transactionId: null });
+      await expect(service.acceptTransfer("u2", "m1")).rejects.toThrow(WsException);
+      expect(transactionService.acceptTransfer).not.toHaveBeenCalled();
+    });
+
+    it("rejects a caller who isn't a member of the room", async () => {
+      prisma.chatMessage.findUnique.mockResolvedValue(pendingMessage);
+      prisma.chatMember.findUnique.mockResolvedValue(null);
+      await expect(service.acceptTransfer("u2", "m1")).rejects.toThrow(WsException);
+      expect(transactionService.acceptTransfer).not.toHaveBeenCalled();
+    });
+
+    it("propagates TransactionService's own rejection (e.g. not the recipient)", async () => {
+      prisma.chatMessage.findUnique.mockResolvedValue(pendingMessage);
+      prisma.chatMember.findUnique.mockResolvedValue({ roomId: "room-1", userId: "u2" });
+      transactionService.acceptTransfer.mockRejectedValue(new Error("Only the recipient can accept this transfer"));
+
+      await expect(service.acceptTransfer("u2", "m1")).rejects.toThrow("Only the recipient can accept this transfer");
+    });
+
+    it("accepts via TransactionService then reloads the settled message", async () => {
+      prisma.chatMessage.findUnique.mockResolvedValue(pendingMessage);
+      prisma.chatMember.findUnique.mockResolvedValue({ roomId: "room-1", userId: "u2" });
+      transactionService.acceptTransfer.mockResolvedValue({ id: "txn-1", status: "COMPLETED" });
+      prisma.chatMessage.findUniqueOrThrow.mockResolvedValue({
+        ...pendingMessage,
+        content: "5,000원을 보냈습니다",
+        amount: 5000,
+        createdAt: new Date(),
+        sender: { username: "u1" },
+        transaction: { status: "COMPLETED" },
+      });
+
+      const message = await service.acceptTransfer("u2", "m1");
+
+      expect(transactionService.acceptTransfer).toHaveBeenCalledWith("txn-1", "u2");
+      expect(message).toMatchObject({ id: "m1", transactionStatus: "COMPLETED" });
+    });
+  });
+
+  describe("rejectTransfer", () => {
+    const pendingMessage = {
+      id: "m1",
+      roomId: "room-1",
+      senderId: "u1",
+      type: "TRANSFER",
+      transactionId: "txn-1",
+    };
+
+    it("rejects a caller who isn't a member of the room", async () => {
+      prisma.chatMessage.findUnique.mockResolvedValue(pendingMessage);
+      prisma.chatMember.findUnique.mockResolvedValue(null);
+      await expect(service.rejectTransfer("u2", "m1")).rejects.toThrow(WsException);
+      expect(transactionService.rejectTransfer).not.toHaveBeenCalled();
+    });
+
+    it("rejects via TransactionService (auto-refunding the sender) then reloads the settled message", async () => {
+      prisma.chatMessage.findUnique.mockResolvedValue(pendingMessage);
+      prisma.chatMember.findUnique.mockResolvedValue({ roomId: "room-1", userId: "u2" });
+      transactionService.rejectTransfer.mockResolvedValue({ id: "txn-1", status: "REJECTED" });
+      prisma.chatMessage.findUniqueOrThrow.mockResolvedValue({
+        ...pendingMessage,
+        content: "5,000원을 보냈습니다",
+        amount: 5000,
+        createdAt: new Date(),
+        sender: { username: "u1" },
+        transaction: { status: "REJECTED" },
+      });
+
+      const message = await service.rejectTransfer("u2", "m1");
+
+      expect(transactionService.rejectTransfer).toHaveBeenCalledWith("txn-1", "u2");
+      expect(message).toMatchObject({ id: "m1", transactionStatus: "REJECTED" });
     });
   });
 

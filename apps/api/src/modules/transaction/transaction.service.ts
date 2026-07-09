@@ -1,5 +1,5 @@
 import { BadRequestException, ConflictException, ForbiddenException, Injectable, NotFoundException } from "@nestjs/common";
-import { AccountStatus, Prisma, ProductStatus, Transaction } from "@prisma/client";
+import { AccountStatus, Prisma, ProductStatus, Transaction, TransactionStatus } from "@prisma/client";
 import type { CursorPaginationResult, TransactionDto } from "@secondhand/types";
 import { PrismaService } from "../../infra/prisma/prisma.service";
 import { UserService } from "../user/user.service";
@@ -80,13 +80,17 @@ export class TransactionService {
     return this.toDto(transaction);
   }
 
-  // Danggeun-Pay-style direct transfer: same balance-safety invariant as
-  // purchase() (conditional updateMany so a concurrent transfer/purchase
-  // can never push the sender negative), just without a product to flip.
-  // Room/membership validation (so this can only be called between two
-  // people who share a DM) lives in ChatService.sendTransfer, which is the
-  // only caller — this method only knows about the two user ids.
-  async transferBalance(senderId: string, recipientId: string, amount: number): Promise<TransactionDto> {
+  // Danggeun-Pay-style direct transfer, escrow style (받기 must be tapped
+  // before the money actually reaches the recipient): this only debits the
+  // sender and parks the amount in a PENDING transaction — see
+  // acceptTransfer/rejectTransfer for where it actually lands or bounces
+  // back. Same balance-safety invariant as purchase() (conditional
+  // updateMany so a concurrent transfer/purchase can never push the sender
+  // negative), just without a product to flip. Room/membership validation
+  // (so this can only be called between two people who share a DM) lives in
+  // ChatService.sendTransfer, which is the only caller — this method only
+  // knows about the two user ids.
+  async initiateTransfer(senderId: string, recipientId: string, amount: number): Promise<TransactionDto> {
     if (senderId === recipientId) throw new BadRequestException("Cannot send money to yourself");
     if (!Number.isInteger(amount) || amount <= 0) throw new BadRequestException("Invalid amount");
 
@@ -111,18 +115,86 @@ export class TransactionService {
         throw new BadRequestException("Insufficient balance");
       }
 
-      await tx.user.update({
-        where: { id: recipientId },
-        data: { balance: { increment: amount } },
-      });
-
       return tx.transaction.create({
-        data: { buyerId: senderId, sellerId: recipientId, productId: null, amount },
+        data: { buyerId: senderId, sellerId: recipientId, productId: null, amount, status: TransactionStatus.PENDING },
         include: { buyer: true, seller: true, product: true },
       });
     });
 
     return this.toDto(transaction);
+  }
+
+  // 받기: only the recipient (transaction.sellerId) can accept, and only
+  // once — the guarded updateMany means a simultaneous accept+reject race
+  // (or a double-tapped accept button) can only ever have one winner, the
+  // loser's affected-row count comes back 0 and throws instead of double
+  // crediting the recipient.
+  async acceptTransfer(transactionId: string, userId: string): Promise<TransactionDto> {
+    const transaction = await this.prisma.transaction.findUnique({ where: { id: transactionId } });
+    if (!transaction) throw new NotFoundException("Transfer not found");
+    if (transaction.sellerId !== userId) {
+      throw new ForbiddenException("Only the recipient can accept this transfer");
+    }
+    if (transaction.status !== TransactionStatus.PENDING) {
+      throw new BadRequestException("Transfer has already been settled");
+    }
+
+    const updated = await this.prisma.$transaction(async (tx) => {
+      const statusUpdate = await tx.transaction.updateMany({
+        where: { id: transactionId, status: TransactionStatus.PENDING },
+        data: { status: TransactionStatus.COMPLETED },
+      });
+      if (statusUpdate.count === 0) {
+        throw new BadRequestException("Transfer has already been settled");
+      }
+
+      await tx.user.update({
+        where: { id: userId },
+        data: { balance: { increment: transaction.amount } },
+      });
+
+      return tx.transaction.findUniqueOrThrow({
+        where: { id: transactionId },
+        include: { buyer: true, seller: true, product: true },
+      });
+    });
+
+    return this.toDto(updated);
+  }
+
+  // 거절: hands the held amount straight back to the sender (buyerId) —
+  // same double-settlement guard as acceptTransfer.
+  async rejectTransfer(transactionId: string, userId: string): Promise<TransactionDto> {
+    const transaction = await this.prisma.transaction.findUnique({ where: { id: transactionId } });
+    if (!transaction) throw new NotFoundException("Transfer not found");
+    if (transaction.sellerId !== userId) {
+      throw new ForbiddenException("Only the recipient can reject this transfer");
+    }
+    if (transaction.status !== TransactionStatus.PENDING) {
+      throw new BadRequestException("Transfer has already been settled");
+    }
+
+    const updated = await this.prisma.$transaction(async (tx) => {
+      const statusUpdate = await tx.transaction.updateMany({
+        where: { id: transactionId, status: TransactionStatus.PENDING },
+        data: { status: TransactionStatus.REJECTED },
+      });
+      if (statusUpdate.count === 0) {
+        throw new BadRequestException("Transfer has already been settled");
+      }
+
+      await tx.user.update({
+        where: { id: transaction.buyerId },
+        data: { balance: { increment: transaction.amount } },
+      });
+
+      return tx.transaction.findUniqueOrThrow({
+        where: { id: transactionId },
+        include: { buyer: true, seller: true, product: true },
+      });
+    });
+
+    return this.toDto(updated);
   }
 
   listMine(userId: string, cursor?: string, limit?: number): Promise<CursorPaginationResult<TransactionDto>> {
@@ -176,6 +248,7 @@ export class TransactionService {
       buyer: { id: transaction.buyer.id, username: transaction.buyer.username },
       seller: { id: transaction.seller.id, username: transaction.seller.username },
       amount: transaction.amount,
+      status: transaction.status,
       createdAt: transaction.createdAt.toISOString(),
     };
   }

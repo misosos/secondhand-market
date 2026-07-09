@@ -31,7 +31,11 @@ export default function MyTransactionsPage() {
           return (
             <li key={tx.id} className={styles.card}>
               <div>
-                <p className={styles.productName}>{tx.productName ?? "채팅 송금"}</p>
+                <p className={styles.productName}>
+                  {tx.productName ?? "채팅 송금"}
+                  {tx.status === "PENDING" && " (대기중)"}
+                  {tx.status === "REJECTED" && " (거절됨·환불)"}
+                </p>
                 <p className={styles.meta}>
                   {tx.productName
                     ? isSale

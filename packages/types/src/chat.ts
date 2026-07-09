@@ -1,4 +1,5 @@
 import { CursorPaginationQuery } from "./pagination";
+import { TransactionStatus } from "./transaction";
 
 export interface ChatRoomDto {
   id: string;
@@ -19,9 +20,13 @@ export interface ChatMessageDto {
   senderUsername: string;
   content: string;
   type: ChatMessageType;
-  // Set only when type is TRANSFER — the amount that moved from sender to
-  // the room's other member.
+  // Set only when type is TRANSFER — the amount held/moved between sender
+  // and the room's other member.
   amount: number | null;
+  // Set only when type is TRANSFER: PENDING until the recipient taps
+  // 받기/거절, then COMPLETED or REJECTED. Drives which buttons (if any)
+  // ChatMessageBubble renders.
+  transactionStatus: TransactionStatus | null;
   createdAt: string;
 }
 
@@ -42,11 +47,20 @@ export interface SendTransferPayload {
   amount: number;
 }
 
+// 받기/거절 both just need to know which TRANSFER message they're acting on
+// — the gateway resolves the room/transaction from the message itself.
+export interface TransferDecisionPayload {
+  messageId: string;
+}
+
 // Socket.io event names shared between gateway (apps/api) and client (apps/web).
 export const CHAT_EVENTS = {
   SEND_MESSAGE: "chat:send",
   SEND_TRANSFER: "chat:transfer",
+  ACCEPT_TRANSFER: "chat:transfer:accept",
+  REJECT_TRANSFER: "chat:transfer:reject",
   NEW_MESSAGE: "chat:new",
+  MESSAGE_UPDATED: "chat:updated",
   JOIN_ROOM: "chat:join",
   JOIN_GLOBAL: "chat:joinGlobal",
   REQUEST_HISTORY: "chat:history",

@@ -1,6 +1,6 @@
 import { Injectable } from "@nestjs/common";
 import { WsException } from "@nestjs/websockets";
-import { AccountStatus, ChatMessage, ChatMessageType, ChatRoom } from "@prisma/client";
+import { AccountStatus, ChatMessage, ChatMessageType, ChatRoom, TransactionStatus } from "@prisma/client";
 import type { ChatHistoryQuery, ChatMessageDto, ChatRoomDto, CursorPaginationResult } from "@secondhand/types";
 import { PrismaService } from "../../infra/prisma/prisma.service";
 import { RedisService } from "../../infra/redis/redis.service";
@@ -82,10 +82,11 @@ export class ChatService {
     return this.toMessageDto(message);
   }
 
-  // Danggeun-Pay-style "송금하기": moves balance directly to whoever's on
-  // the other side of this DM, then drops a TRANSFER-type message into the
-  // room so both sides see it show up like any other chat message (same
-  // rate limit and broadcast path as sendMessage — see ChatGateway).
+  // Danggeun-Pay-style "송금하기", escrow style: debits the sender right
+  // away and drops a PENDING TRANSFER-type message into the room, but the
+  // amount only actually reaches the recipient once they tap 받기 (see
+  // acceptTransfer/rejectTransfer) — same rate limit and broadcast path as
+  // sendMessage (see ChatGateway).
   async sendTransfer(senderId: string, roomId: string, amount: number): Promise<ChatMessageDto> {
     await this.assertActive(senderId);
     const room = await this.getRoomOrThrow(roomId);
@@ -100,7 +101,7 @@ export class ChatService {
     });
     if (!membership) throw new WsException("This room has no other member to send money to");
 
-    const transaction = await this.transactionService.transferBalance(senderId, membership.userId, amount);
+    const transaction = await this.transactionService.initiateTransfer(senderId, membership.userId, amount);
 
     const message = await this.prisma.chatMessage.create({
       data: {
@@ -108,12 +109,33 @@ export class ChatService {
         senderId,
         type: ChatMessageType.TRANSFER,
         amount: transaction.amount,
+        transactionId: transaction.id,
         content: `${transaction.amount.toLocaleString()}원을 보냈습니다`,
       },
-      include: { sender: true },
+      include: { sender: true, transaction: true },
     });
 
     return this.toMessageDto(message);
+  }
+
+  // 받기: only the room member on the other side of the original transfer
+  // may accept, enforced in TransactionService.acceptTransfer via the
+  // transaction's recorded recipient (sellerId) — assertMember here only
+  // confirms the caller is even in this DM at all.
+  async acceptTransfer(userId: string, messageId: string): Promise<ChatMessageDto> {
+    const message = await this.getTransferMessageOrThrow(messageId);
+    await this.assertMember(message.roomId, userId);
+    await this.transactionService.acceptTransfer(message.transactionId as string, userId);
+    return this.reloadMessage(messageId);
+  }
+
+  // 거절: same authority check as acceptTransfer; TransactionService
+  // refunds the sender automatically as part of the same DB transaction.
+  async rejectTransfer(userId: string, messageId: string): Promise<ChatMessageDto> {
+    const message = await this.getTransferMessageOrThrow(messageId);
+    await this.assertMember(message.roomId, userId);
+    await this.transactionService.rejectTransfer(message.transactionId as string, userId);
+    return this.reloadMessage(messageId);
   }
 
   async getGlobalRoom(userId: string): Promise<ChatRoomDto> {
@@ -128,7 +150,7 @@ export class ChatService {
       where: { isGlobal: false, members: { some: { userId } } },
       include: {
         members: true,
-        messages: { orderBy: { createdAt: "desc" }, take: 1, include: { sender: true } },
+        messages: { orderBy: { createdAt: "desc" }, take: 1, include: { sender: true, transaction: true } },
       },
     });
 
@@ -178,7 +200,7 @@ export class ChatService {
       },
       orderBy: [{ createdAt: "desc" }, { id: "desc" }],
       take: limit + 1,
-      include: { sender: true },
+      include: { sender: true, transaction: true },
     });
 
     const hasNext = rows.length > limit;
@@ -204,6 +226,23 @@ export class ChatService {
     return room;
   }
 
+  private async getTransferMessageOrThrow(messageId: string): Promise<ChatMessage> {
+    const message = await this.prisma.chatMessage.findUnique({ where: { id: messageId } });
+    if (!message) throw new WsException("Message not found");
+    if (message.type !== ChatMessageType.TRANSFER || !message.transactionId) {
+      throw new WsException("Not a transfer message");
+    }
+    return message;
+  }
+
+  private async reloadMessage(messageId: string): Promise<ChatMessageDto> {
+    const message = await this.prisma.chatMessage.findUniqueOrThrow({
+      where: { id: messageId },
+      include: { sender: true, transaction: true },
+    });
+    return this.toMessageDto(message);
+  }
+
   private async assertMember(roomId: string, userId: string): Promise<void> {
     const membership = await this.prisma.chatMember.findUnique({
       where: { roomId_userId: { roomId, userId } },
@@ -224,7 +263,9 @@ export class ChatService {
     }
   }
 
-  private toMessageDto(message: ChatMessage & { sender: { username: string } }): ChatMessageDto {
+  private toMessageDto(
+    message: ChatMessage & { sender: { username: string }; transaction?: { status: TransactionStatus } | null },
+  ): ChatMessageDto {
     return {
       id: message.id,
       roomId: message.roomId,
@@ -233,6 +274,7 @@ export class ChatService {
       content: message.content,
       type: message.type,
       amount: message.amount,
+      transactionStatus: message.transaction?.status ?? null,
       createdAt: message.createdAt.toISOString(),
     };
   }

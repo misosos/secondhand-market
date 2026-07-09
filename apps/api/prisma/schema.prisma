@@ -39,6 +39,16 @@ enum ChatMessageType {
   TRANSFER
 }
 
+// PENDING only ever applies to a chat transfer awaiting the recipient's
+// 받기/거절 decision (see TransactionService.initiateTransfer) — a product
+// purchase (Transaction.productId set) is created straight into COMPLETED
+// since there's no accept step for those.
+enum TransactionStatus {
+  PENDING
+  COMPLETED
+  REJECTED
+}
+
 model User {
   id          String        @id @default(uuid())
   username    String        @unique
@@ -125,19 +135,23 @@ model Report {
 // this row is always a truthful record of a transfer that actually
 // happened — never created speculatively or before funds move.
 model Transaction {
-  id        String   @id @default(uuid())
+  id        String            @id @default(uuid())
   buyerId   String
-  buyer     User     @relation("Purchases", fields: [buyerId], references: [id])
+  buyer     User              @relation("Purchases", fields: [buyerId], references: [id])
   sellerId  String
-  seller    User     @relation("Sales", fields: [sellerId], references: [id])
+  seller    User              @relation("Sales", fields: [sellerId], references: [id])
   // Null for a direct chat-to-chat transfer (Danggeun-Pay-style "송금"),
   // set for a product purchase. Either way this row is the one source of
   // truth for every balance movement, so admin oversight (listAll) doesn't
   // need to know which kind it's looking at.
   productId String?
-  product   Product? @relation(fields: [productId], references: [id])
+  product   Product?          @relation(fields: [productId], references: [id])
   amount    Int
-  createdAt DateTime @default(now())
+  // Only meaningful for a chat transfer's escrow hold — see the enum doc.
+  status    TransactionStatus @default(COMPLETED)
+  createdAt DateTime          @default(now())
+
+  chatMessage ChatMessage?
 
   @@index([buyerId])
   @@index([sellerId])
@@ -160,21 +174,26 @@ model ChatMember {
 }
 
 model ChatMessage {
-  id        String          @id @default(uuid())
-  roomId    String
-  senderId  String
-  content   String          @db.Text
+  id            String          @id @default(uuid())
+  roomId        String
+  senderId      String
+  content       String          @db.Text
   // TRANSFER messages carry `amount` (the wallet transfer that triggered
   // them, see ChatService.sendTransfer) so the client can render a
   // distinct "sent/received money" bubble instead of a plain text one.
   // `content` is still populated with a human-readable fallback so any
   // code that only reads `content` (search, notifications, etc.) still
   // shows something sensible.
-  type      ChatMessageType @default(TEXT)
-  amount    Int?
-  createdAt DateTime        @default(now())
-  room      ChatRoom        @relation(fields: [roomId], references: [id])
-  sender    User            @relation(fields: [senderId], references: [id])
+  type          ChatMessageType @default(TEXT)
+  amount        Int?
+  // Links a TRANSFER message to the escrow Transaction it triggered, so the
+  // client can render the current 대기중/받음/거절됨 state and the
+  // accept/reject buttons resolve to the right row (see ChatService).
+  transactionId String?         @unique
+  transaction   Transaction?    @relation(fields: [transactionId], references: [id])
+  createdAt     DateTime        @default(now())
+  room          ChatRoom        @relation(fields: [roomId], references: [id])
+  sender        User            @relation(fields: [senderId], references: [id])
 
   @@index([roomId, createdAt])
 }
