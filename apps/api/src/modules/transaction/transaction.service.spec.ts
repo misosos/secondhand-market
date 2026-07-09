@@ -147,4 +147,94 @@ describe("TransactionService", () => {
       });
     });
   });
+
+  describe("transferBalance", () => {
+    const activeRecipient = { id: "recipient-1", status: AccountStatus.ACTIVE, balance: 0 };
+
+    it("rejects sending money to yourself, before ever touching the db", async () => {
+      await expect(service.transferBalance("u1", "u1", 1000)).rejects.toThrow(BadRequestException);
+      expect(userService.findActiveById).not.toHaveBeenCalled();
+    });
+
+    it("rejects a non-positive or non-integer amount", async () => {
+      await expect(service.transferBalance("sender-1", "recipient-1", 0)).rejects.toThrow(BadRequestException);
+      await expect(service.transferBalance("sender-1", "recipient-1", 1.5)).rejects.toThrow(BadRequestException);
+    });
+
+    it("rejects when the sender doesn't exist", async () => {
+      userService.findActiveById.mockResolvedValueOnce(null);
+      await expect(service.transferBalance("sender-1", "recipient-1", 1000)).rejects.toThrow(NotFoundException);
+    });
+
+    it("rejects a dormant sender", async () => {
+      userService.findActiveById.mockResolvedValueOnce({ ...activeBuyer, status: AccountStatus.DORMANT });
+      await expect(service.transferBalance("sender-1", "recipient-1", 1000)).rejects.toThrow(ForbiddenException);
+    });
+
+    it("rejects when the recipient doesn't exist", async () => {
+      userService.findActiveById.mockResolvedValueOnce(activeBuyer).mockResolvedValueOnce(null);
+      await expect(service.transferBalance("sender-1", "recipient-1", 1000)).rejects.toThrow(NotFoundException);
+    });
+
+    it("rejects sending to a dormant recipient", async () => {
+      userService.findActiveById
+        .mockResolvedValueOnce(activeBuyer)
+        .mockResolvedValueOnce({ ...activeRecipient, status: AccountStatus.DORMANT });
+      await expect(service.transferBalance("sender-1", "recipient-1", 1000)).rejects.toThrow(ForbiddenException);
+    });
+
+    it("rejects when the sender's balance is below the amount", async () => {
+      userService.findActiveById
+        .mockResolvedValueOnce({ ...activeBuyer, balance: 500 })
+        .mockResolvedValueOnce(activeRecipient);
+      await expect(service.transferBalance("sender-1", "recipient-1", 1000)).rejects.toThrow(BadRequestException);
+      expect(prisma.$transaction).not.toHaveBeenCalled();
+    });
+
+    it("rejects if the sender's balance dropped by write time (updateMany count guard)", async () => {
+      userService.findActiveById.mockResolvedValueOnce(activeBuyer).mockResolvedValueOnce(activeRecipient);
+      tx.user.updateMany.mockResolvedValue({ count: 0 });
+
+      await expect(service.transferBalance("sender-1", "recipient-1", 1000)).rejects.toThrow(BadRequestException);
+      expect(tx.user.update).not.toHaveBeenCalled();
+    });
+
+    it("moves balance with no product involved, and records a productId:null transaction", async () => {
+      userService.findActiveById.mockResolvedValueOnce(activeBuyer).mockResolvedValueOnce(activeRecipient);
+      tx.user.updateMany.mockResolvedValue({ count: 1 });
+      tx.transaction.create.mockResolvedValue({
+        id: "txn-2",
+        productId: null,
+        amount: 3_000,
+        createdAt: new Date("2026-01-01T00:00:00Z"),
+        buyer: { id: "sender-1", username: "sender" },
+        seller: { id: "recipient-1", username: "recipient" },
+        product: null,
+      });
+
+      const dto = await service.transferBalance("sender-1", "recipient-1", 3_000);
+
+      expect(tx.user.updateMany).toHaveBeenCalledWith({
+        where: { id: "sender-1", balance: { gte: 3_000 } },
+        data: { balance: { decrement: 3_000 } },
+      });
+      expect(tx.user.update).toHaveBeenCalledWith({
+        where: { id: "recipient-1" },
+        data: { balance: { increment: 3_000 } },
+      });
+      expect(tx.transaction.create).toHaveBeenCalledWith({
+        data: { buyerId: "sender-1", sellerId: "recipient-1", productId: null, amount: 3_000 },
+        include: { buyer: true, seller: true, product: true },
+      });
+      expect(dto).toEqual({
+        id: "txn-2",
+        productId: null,
+        productName: null,
+        buyer: { id: "sender-1", username: "sender" },
+        seller: { id: "recipient-1", username: "recipient" },
+        amount: 3_000,
+        createdAt: "2026-01-01T00:00:00.000Z",
+      });
+    });
+  });
 });

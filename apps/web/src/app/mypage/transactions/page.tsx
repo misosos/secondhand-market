@@ -31,10 +31,16 @@ export default function MyTransactionsPage() {
           return (
             <li key={tx.id} className={styles.card}>
               <div>
-                <p className={styles.productName}>{tx.productName}</p>
+                <p className={styles.productName}>{tx.productName ?? "채팅 송금"}</p>
                 <p className={styles.meta}>
-                  {isSale ? `구매자 ${tx.buyer.username}` : `판매자 ${tx.seller.username}`} ·{" "}
-                  {new Date(tx.createdAt).toLocaleString()}
+                  {tx.productName
+                    ? isSale
+                      ? `구매자 ${tx.buyer.username}`
+                      : `판매자 ${tx.seller.username}`
+                    : isSale
+                      ? `보낸사람 ${tx.buyer.username}`
+                      : `받는사람 ${tx.seller.username}`}{" "}
+                  · {new Date(tx.createdAt).toLocaleString()}
                 </p>
               </div>
               <span className={`${styles.amount} ${isSale ? styles.received : styles.sent}`}>

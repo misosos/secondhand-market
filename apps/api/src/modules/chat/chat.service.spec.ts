@@ -5,13 +5,14 @@ import { ChatService } from "./chat.service";
 import { PrismaService } from "../../infra/prisma/prisma.service";
 import { RedisService } from "../../infra/redis/redis.service";
 import { UserService } from "../user/user.service";
+import { TransactionService } from "../transaction/transaction.service";
 import { CHAT_RATE_LIMIT_PER_WINDOW } from "./chat.constants";
 
 describe("ChatService", () => {
   let service: ChatService;
   let prisma: {
     $transaction: jest.Mock;
-    chatMember: { findUnique: jest.Mock };
+    chatMember: { findUnique: jest.Mock; findFirst: jest.Mock };
     chatMessage: { create: jest.Mock; findMany: jest.Mock };
     chatRoom: { findMany: jest.Mock; findUnique: jest.Mock; findFirst: jest.Mock };
     user: { findMany: jest.Mock };
@@ -19,6 +20,7 @@ describe("ChatService", () => {
   let tx: { $executeRaw: jest.Mock; chatRoom: { findFirst: jest.Mock; create: jest.Mock } };
   let redisClient: { incr: jest.Mock; pexpire: jest.Mock };
   let userService: { findActiveById: jest.Mock };
+  let transactionService: { transferBalance: jest.Mock };
 
   const activeUser = (id: string) => ({ id, username: id, status: AccountStatus.ACTIVE });
 
@@ -29,13 +31,14 @@ describe("ChatService", () => {
     };
     prisma = {
       $transaction: jest.fn((callback: (tx: unknown) => unknown) => callback(tx)),
-      chatMember: { findUnique: jest.fn() },
+      chatMember: { findUnique: jest.fn(), findFirst: jest.fn() },
       chatMessage: { create: jest.fn(), findMany: jest.fn() },
       chatRoom: { findMany: jest.fn(), findUnique: jest.fn(), findFirst: jest.fn() },
       user: { findMany: jest.fn() },
     };
     redisClient = { incr: jest.fn(), pexpire: jest.fn() };
     userService = { findActiveById: jest.fn() };
+    transactionService = { transferBalance: jest.fn() };
 
     const module = await Test.createTestingModule({
       providers: [
@@ -43,6 +46,7 @@ describe("ChatService", () => {
         { provide: PrismaService, useValue: prisma },
         { provide: RedisService, useValue: { client: redisClient } },
         { provide: UserService, useValue: userService },
+        { provide: TransactionService, useValue: transactionService },
       ],
     }).compile();
 
@@ -171,6 +175,65 @@ describe("ChatService", () => {
 
       redisClient.incr.mockResolvedValueOnce(CHAT_RATE_LIMIT_PER_WINDOW + 1);
       await expect(service.sendMessage("u1", "room-1", "hi")).rejects.toThrow(WsException);
+    });
+  });
+
+  describe("sendTransfer", () => {
+    beforeEach(() => {
+      userService.findActiveById.mockResolvedValue(activeUser("u1"));
+      prisma.chatRoom.findUnique.mockResolvedValue({ id: "room-1", isGlobal: false });
+      prisma.chatMember.findUnique.mockResolvedValue({ roomId: "room-1", userId: "u1" });
+      redisClient.incr.mockResolvedValue(1);
+    });
+
+    it("rejects sending money in the global room", async () => {
+      prisma.chatRoom.findUnique.mockResolvedValue({ id: "global-room", isGlobal: true });
+      await expect(service.sendTransfer("u1", "global-room", 1000)).rejects.toThrow(WsException);
+      expect(transactionService.transferBalance).not.toHaveBeenCalled();
+    });
+
+    it("rejects a sender who isn't a member of the room", async () => {
+      prisma.chatMember.findUnique.mockResolvedValue(null);
+      await expect(service.sendTransfer("u1", "room-1", 1000)).rejects.toThrow(WsException);
+      expect(transactionService.transferBalance).not.toHaveBeenCalled();
+    });
+
+    it("rejects when the room unexpectedly has no other member", async () => {
+      prisma.chatMember.findFirst.mockResolvedValue(null);
+      await expect(service.sendTransfer("u1", "room-1", 1000)).rejects.toThrow(WsException);
+      expect(transactionService.transferBalance).not.toHaveBeenCalled();
+    });
+
+    it("propagates TransactionService's own rejection (e.g. insufficient balance) without creating a message", async () => {
+      prisma.chatMember.findFirst.mockResolvedValue({ roomId: "room-1", userId: "u2" });
+      transactionService.transferBalance.mockRejectedValue(new Error("Insufficient balance"));
+
+      await expect(service.sendTransfer("u1", "room-1", 1000)).rejects.toThrow("Insufficient balance");
+      expect(prisma.chatMessage.create).not.toHaveBeenCalled();
+    });
+
+    it("moves the balance via TransactionService, then records a TRANSFER message", async () => {
+      prisma.chatMember.findFirst.mockResolvedValue({ roomId: "room-1", userId: "u2" });
+      transactionService.transferBalance.mockResolvedValue({ amount: 5000 });
+      prisma.chatMessage.create.mockResolvedValue({
+        id: "m1",
+        roomId: "room-1",
+        senderId: "u1",
+        content: "5,000원을 보냈습니다",
+        type: "TRANSFER",
+        amount: 5000,
+        createdAt: new Date(),
+        sender: { username: "u1" },
+      });
+
+      const message = await service.sendTransfer("u1", "room-1", 5000);
+
+      expect(transactionService.transferBalance).toHaveBeenCalledWith("u1", "u2", 5000);
+      expect(prisma.chatMessage.create).toHaveBeenCalledWith({
+        data: { roomId: "room-1", senderId: "u1", type: "TRANSFER", amount: 5000, content: "5,000원을 보냈습니다" },
+        include: { sender: true },
+      });
+      expect(message).toMatchObject({ id: "m1", type: "TRANSFER", amount: 5000 });
     });
   });
 

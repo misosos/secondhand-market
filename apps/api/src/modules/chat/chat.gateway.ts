@@ -18,6 +18,7 @@ import { ChatService } from "./chat.service";
 import { ChatHistoryQueryDto } from "./dto/chat-history-query.dto";
 import { JoinRoomDto } from "./dto/join-room.dto";
 import { SendMessageDto } from "./dto/send-message.dto";
+import { SendTransferDto } from "./dto/send-transfer.dto";
 
 @WebSocketGateway({
   cors: { origin: process.env.CORS_ORIGIN ?? "http://localhost:3000", credentials: true },
@@ -100,6 +101,20 @@ export class ChatGateway implements OnGatewayConnection {
     // Persist-then-broadcast per spec: the message only reaches sockets
     // that already joined this room's Socket.io room (see handleJoin), so
     // non-participants can never receive it even if they guessed a roomId.
+    this.server.to(dto.roomId).emit(CHAT_EVENTS.NEW_MESSAGE, message);
+
+    return message;
+  }
+
+  @SubscribeMessage(CHAT_EVENTS.SEND_TRANSFER)
+  async handleTransfer(@ConnectedSocket() client: Socket, @MessageBody() dto: SendTransferDto) {
+    const userId = this.userId(client);
+    const message = await this.chatService.sendTransfer(userId, dto.roomId, dto.amount);
+
+    // Same persist-then-broadcast path as a regular message (see
+    // handleSend) — the transfer already happened by the time this emits,
+    // so both sides seeing it appear is just a UI reflection of money that
+    // has already moved.
     this.server.to(dto.roomId).emit(CHAT_EVENTS.NEW_MESSAGE, message);
 
     return message;

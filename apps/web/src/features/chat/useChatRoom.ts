@@ -115,5 +115,19 @@ export function useChatRoom(roomKey: string | null, join: () => Promise<ChatRoom
     }
   }, []);
 
-  return { room, messages, isConnecting, error, hasMoreHistory, loadMoreHistory, sendMessage };
+  // Danggeun-Pay-style direct transfer — rejected server-side for the
+  // global room (see ChatService.sendTransfer), so this is only meant to
+  // be wired up from the 1:1 DM window.
+  const sendTransfer = useCallback(async (amount: number) => {
+    if (!roomIdRef.current) return;
+    const socket = connectSocket();
+    try {
+      await emitWithAck(socket, CHAT_EVENTS.SEND_TRANSFER, { roomId: roomIdRef.current, amount });
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to send money");
+      throw err;
+    }
+  }, []);
+
+  return { room, messages, isConnecting, error, hasMoreHistory, loadMoreHistory, sendMessage, sendTransfer };
 }

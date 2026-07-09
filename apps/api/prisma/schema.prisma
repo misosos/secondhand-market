@@ -34,6 +34,11 @@ enum ReportStatus {
   REJECTED
 }
 
+enum ChatMessageType {
+  TEXT
+  TRANSFER
+}
+
 model User {
   id          String        @id @default(uuid())
   username    String        @unique
@@ -125,8 +130,12 @@ model Transaction {
   buyer     User     @relation("Purchases", fields: [buyerId], references: [id])
   sellerId  String
   seller    User     @relation("Sales", fields: [sellerId], references: [id])
-  productId String
-  product   Product  @relation(fields: [productId], references: [id])
+  // Null for a direct chat-to-chat transfer (Danggeun-Pay-style "송금"),
+  // set for a product purchase. Either way this row is the one source of
+  // truth for every balance movement, so admin oversight (listAll) doesn't
+  // need to know which kind it's looking at.
+  productId String?
+  product   Product? @relation(fields: [productId], references: [id])
   amount    Int
   createdAt DateTime @default(now())
 
@@ -151,13 +160,21 @@ model ChatMember {
 }
 
 model ChatMessage {
-  id        String   @id @default(uuid())
+  id        String          @id @default(uuid())
   roomId    String
   senderId  String
-  content   String   @db.Text
-  createdAt DateTime @default(now())
-  room      ChatRoom @relation(fields: [roomId], references: [id])
-  sender    User     @relation(fields: [senderId], references: [id])
+  content   String          @db.Text
+  // TRANSFER messages carry `amount` (the wallet transfer that triggered
+  // them, see ChatService.sendTransfer) so the client can render a
+  // distinct "sent/received money" bubble instead of a plain text one.
+  // `content` is still populated with a human-readable fallback so any
+  // code that only reads `content` (search, notifications, etc.) still
+  // shows something sensible.
+  type      ChatMessageType @default(TEXT)
+  amount    Int?
+  createdAt DateTime        @default(now())
+  room      ChatRoom        @relation(fields: [roomId], references: [id])
+  sender    User            @relation(fields: [senderId], references: [id])
 
   @@index([roomId, createdAt])
 }

@@ -12,11 +12,19 @@ interface ChatMessageBubbleProps {
 
 export function ChatMessageBubble({ message, isOwn, showSender }: ChatMessageBubbleProps) {
   const time = new Date(message.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+  const isTransfer = message.type === "TRANSFER";
 
   return (
     <div className={`${styles.row} ${isOwn ? styles.own : ""}`}>
       {showSender && !isOwn && <span className={styles.sender}>{message.senderUsername}</span>}
-      <div className={styles.bubble}>{message.content}</div>
+      {isTransfer ? (
+        <div className={styles.transferBubble}>
+          <span className={styles.transferIcon}>💸</span>
+          <span>{(message.amount ?? 0).toLocaleString()}원 {isOwn ? "보냄" : "받음"}</span>
+        </div>
+      ) : (
+        <div className={styles.bubble}>{message.content}</div>
+      )}
       <span className={styles.time}>{time}</span>
     </div>
   );

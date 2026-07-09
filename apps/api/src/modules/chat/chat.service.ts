@@ -1,10 +1,11 @@
 import { Injectable } from "@nestjs/common";
 import { WsException } from "@nestjs/websockets";
-import { AccountStatus, ChatMessage, ChatRoom } from "@prisma/client";
+import { AccountStatus, ChatMessage, ChatMessageType, ChatRoom } from "@prisma/client";
 import type { ChatHistoryQuery, ChatMessageDto, ChatRoomDto, CursorPaginationResult } from "@secondhand/types";
 import { PrismaService } from "../../infra/prisma/prisma.service";
 import { RedisService } from "../../infra/redis/redis.service";
 import { UserService } from "../user/user.service";
+import { TransactionService } from "../transaction/transaction.service";
 import { CHAT_HISTORY_DEFAULT_PAGE_SIZE, CHAT_HISTORY_MAX_PAGE_SIZE, CHAT_RATE_LIMIT_PER_WINDOW, CHAT_RATE_LIMIT_WINDOW_MS } from "./chat.constants";
 import { buildSeekWhere, decodeCursor, encodeCursor } from "./chat.pagination";
 
@@ -14,6 +15,7 @@ export class ChatService {
     private readonly prisma: PrismaService,
     private readonly redisService: RedisService,
     private readonly userService: UserService,
+    private readonly transactionService: TransactionService,
   ) {}
 
   async getOrCreateDmRoom(userId: string, peerId: string): Promise<ChatRoomDto> {
@@ -74,6 +76,40 @@ export class ChatService {
 
     const message = await this.prisma.chatMessage.create({
       data: { roomId, senderId, content },
+      include: { sender: true },
+    });
+
+    return this.toMessageDto(message);
+  }
+
+  // Danggeun-Pay-style "송금하기": moves balance directly to whoever's on
+  // the other side of this DM, then drops a TRANSFER-type message into the
+  // room so both sides see it show up like any other chat message (same
+  // rate limit and broadcast path as sendMessage — see ChatGateway).
+  async sendTransfer(senderId: string, roomId: string, amount: number): Promise<ChatMessageDto> {
+    await this.assertActive(senderId);
+    const room = await this.getRoomOrThrow(roomId);
+    if (room.isGlobal) {
+      throw new WsException("Cannot send money in the global chat room");
+    }
+    await this.assertMember(roomId, senderId);
+    await this.assertNotRateLimited(senderId);
+
+    const membership = await this.prisma.chatMember.findFirst({
+      where: { roomId, userId: { not: senderId } },
+    });
+    if (!membership) throw new WsException("This room has no other member to send money to");
+
+    const transaction = await this.transactionService.transferBalance(senderId, membership.userId, amount);
+
+    const message = await this.prisma.chatMessage.create({
+      data: {
+        roomId,
+        senderId,
+        type: ChatMessageType.TRANSFER,
+        amount: transaction.amount,
+        content: `${transaction.amount.toLocaleString()}원을 보냈습니다`,
+      },
       include: { sender: true },
     });
 
@@ -195,6 +231,8 @@ export class ChatService {
       senderId: message.senderId,
       senderUsername: message.sender.username,
       content: message.content,
+      type: message.type,
+      amount: message.amount,
       createdAt: message.createdAt.toISOString(),
     };
   }

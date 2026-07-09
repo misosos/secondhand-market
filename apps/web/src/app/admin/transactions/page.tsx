@@ -26,7 +26,7 @@ export default function AdminTransactionsPage() {
         {items.map((tx) => (
           <li key={tx.id} className={styles.card}>
             <div>
-              <p className={styles.productName}>{tx.productName}</p>
+              <p className={styles.productName}>{tx.productName ?? "채팅 송금"}</p>
               <p className={styles.meta}>
                 {tx.buyer.username} → {tx.seller.username} · {new Date(tx.createdAt).toLocaleString()}
               </p>

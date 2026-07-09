@@ -9,7 +9,7 @@ import { buildSeekWhere, decodeCursor, encodeCursor } from "./transaction.pagina
 type TransactionWithParties = Transaction & {
   buyer: { id: string; username: string };
   seller: { id: string; username: string };
-  product: { name: string };
+  product: { name: string } | null;
 };
 
 @Injectable()
@@ -80,6 +80,51 @@ export class TransactionService {
     return this.toDto(transaction);
   }
 
+  // Danggeun-Pay-style direct transfer: same balance-safety invariant as
+  // purchase() (conditional updateMany so a concurrent transfer/purchase
+  // can never push the sender negative), just without a product to flip.
+  // Room/membership validation (so this can only be called between two
+  // people who share a DM) lives in ChatService.sendTransfer, which is the
+  // only caller — this method only knows about the two user ids.
+  async transferBalance(senderId: string, recipientId: string, amount: number): Promise<TransactionDto> {
+    if (senderId === recipientId) throw new BadRequestException("Cannot send money to yourself");
+    if (!Number.isInteger(amount) || amount <= 0) throw new BadRequestException("Invalid amount");
+
+    const sender = await this.userService.findActiveById(senderId);
+    if (!sender) throw new NotFoundException("Sender not found");
+    if (sender.status === AccountStatus.DORMANT) {
+      throw new ForbiddenException("Dormant accounts cannot send money");
+    }
+    const recipient = await this.userService.findActiveById(recipientId);
+    if (!recipient) throw new NotFoundException("Recipient not found");
+    if (recipient.status === AccountStatus.DORMANT) {
+      throw new ForbiddenException("Cannot send money to a dormant account");
+    }
+    if (sender.balance < amount) throw new BadRequestException("Insufficient balance");
+
+    const transaction = await this.prisma.$transaction(async (tx) => {
+      const senderUpdate = await tx.user.updateMany({
+        where: { id: senderId, balance: { gte: amount } },
+        data: { balance: { decrement: amount } },
+      });
+      if (senderUpdate.count === 0) {
+        throw new BadRequestException("Insufficient balance");
+      }
+
+      await tx.user.update({
+        where: { id: recipientId },
+        data: { balance: { increment: amount } },
+      });
+
+      return tx.transaction.create({
+        data: { buyerId: senderId, sellerId: recipientId, productId: null, amount },
+        include: { buyer: true, seller: true, product: true },
+      });
+    });
+
+    return this.toDto(transaction);
+  }
+
   listMine(userId: string, cursor?: string, limit?: number): Promise<CursorPaginationResult<TransactionDto>> {
     return this.list({ OR: [{ buyerId: userId }, { sellerId: userId }] }, cursor, limit);
   }
@@ -127,7 +172,7 @@ export class TransactionService {
     return {
       id: transaction.id,
       productId: transaction.productId,
-      productName: transaction.product.name,
+      productName: transaction.product?.name ?? null,
       buyer: { id: transaction.buyer.id, username: transaction.buyer.username },
       seller: { id: transaction.seller.id, username: transaction.seller.username },
       amount: transaction.amount,
