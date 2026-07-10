@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import { Role } from "@secondhand/types";
 import { useAuth } from "@/features/auth/useAuth";
+import { Logo } from "./Logo";
 import { ThemeToggle } from "./ThemeToggle";
 import styles from "./NavBar.module.css";
 
@@ -25,8 +26,8 @@ export function NavBar() {
   return (
     <header className={styles.header}>
       <div className={`container ${styles.inner}`}>
-        <Link href="/" className={styles.logo}>
-          중고거래
+        <Link href="/" className={styles.logo} aria-label="중고거래">
+          <Logo size={32} />
         </Link>
         <div className={styles.right}>
           <nav className={styles.nav}>

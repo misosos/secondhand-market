@@ -1,10 +1,12 @@
 "use client";
 
 import { useState } from "react";
+import { Search } from "lucide-react";
 import type { ProductSortBy, SortOrder } from "@secondhand/types";
 import { ProductList } from "@/components/product/ProductList";
 import { useProducts } from "@/features/product/useProducts";
 import { ErrorMessage } from "@/components/common/ErrorMessage";
+import { Logo } from "@/components/common/Logo";
 import styles from "./page.module.css";
 
 export default function HomePage() {
@@ -24,37 +26,48 @@ export default function HomePage() {
   return (
     <div>
       <div className={styles.hero}>
+        <div className={styles.heroGlow} aria-hidden />
         <div className={styles.heroInner}>
-          <span className="eyebrow">중고거래</span>
+          <span className={styles.heroBrand}>
+            <Logo size={22} />
+            중고거래
+          </span>
           <h1 className={styles.heroHeadline}>
-            물건은 새롭게,
+            쓰던 물건에,
             <br />
-            <b>발견</b>은 더 쉽게.
+            <b>새 가격표</b>를.
           </h1>
-          <p className={styles.heroSub}>믿을 수 있는 이웃에게서, 필요했던 물건을 합리적인 가격에.</p>
+          <p className={styles.heroSub}>필요 없는 건 팔고, 필요한 건 싸게 사요.</p>
+
+          <form
+            className={styles.toolbar}
+            onSubmit={(e) => {
+              e.preventDefault();
+              setKeyword(keywordInput.trim());
+            }}
+          >
+            <div className={styles.searchWrap}>
+              <Search size={16} strokeWidth={2} className={styles.searchIcon} aria-hidden />
+              <input
+                className={styles.searchInput}
+                placeholder="상품명 또는 설명 검색"
+                value={keywordInput}
+                onChange={(e) => setKeywordInput(e.target.value)}
+              />
+            </div>
+            <select
+              className={styles.select}
+              value={`${sortBy}:${order}`}
+              onChange={(e) => handleSortChange(e.target.value)}
+            >
+              <option value="createdAt:desc">최신순</option>
+              <option value="createdAt:asc">오래된순</option>
+              <option value="price:asc">낮은 가격순</option>
+              <option value="price:desc">높은 가격순</option>
+            </select>
+          </form>
         </div>
       </div>
-
-      <form
-        className={styles.toolbar}
-        onSubmit={(e) => {
-          e.preventDefault();
-          setKeyword(keywordInput.trim());
-        }}
-      >
-        <input
-          className={styles.searchInput}
-          placeholder="상품명 또는 설명 검색"
-          value={keywordInput}
-          onChange={(e) => setKeywordInput(e.target.value)}
-        />
-        <select className={styles.select} value={`${sortBy}:${order}`} onChange={(e) => handleSortChange(e.target.value)}>
-          <option value="createdAt:desc">최신순</option>
-          <option value="createdAt:asc">오래된순</option>
-          <option value="price:asc">낮은 가격순</option>
-          <option value="price:desc">높은 가격순</option>
-        </select>
-      </form>
 
       <ErrorMessage>{error}</ErrorMessage>
 

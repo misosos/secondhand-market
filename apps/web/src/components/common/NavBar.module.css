@@ -16,12 +16,8 @@
 }
 
 .logo {
-  font-family: var(--font-display);
-  font-weight: 600;
-  font-size: 17px;
-  letter-spacing: -0.01em;
-  text-decoration: none;
-  color: var(--color-text);
+  display: inline-flex;
+  align-items: center;
 }
 
 .right {
