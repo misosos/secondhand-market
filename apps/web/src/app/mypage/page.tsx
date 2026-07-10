@@ -4,6 +4,7 @@ import { useState, type FormEvent } from "react";
 import { KeyRound, Save } from "lucide-react";
 import { Button } from "@/components/common/Button";
 import { ErrorMessage } from "@/components/common/ErrorMessage";
+import { FormCard } from "@/components/common/FormCard";
 import { Input } from "@/components/common/Input";
 import { Spinner } from "@/components/common/Spinner";
 import { TextArea } from "@/components/common/TextArea";
@@ -71,42 +72,48 @@ export default function MyPage() {
 
       <section className={styles.section}>
         <h2 className={styles.sectionTitle}>소개글</h2>
-        <form onSubmit={handleBioSubmit}>
-          <TextArea value={bio} onChange={(e) => setBio(e.target.value)} rows={4} maxLength={500} />
-          {bioSuccess && <p className={styles.success}>저장되었습니다.</p>}
-          <ErrorMessage>{bioError}</ErrorMessage>
-          <Button type="submit" icon={Save} disabled={isSavingBio}>
-            {isSavingBio ? "저장 중..." : "저장"}
-          </Button>
-        </form>
+        <FormCard>
+          <form onSubmit={handleBioSubmit}>
+            <TextArea value={bio} onChange={(e) => setBio(e.target.value)} rows={4} maxLength={500} />
+            {bioSuccess && <p className={styles.success}>저장되었습니다.</p>}
+            <ErrorMessage>{bioError}</ErrorMessage>
+            <Button type="submit" icon={Save} disabled={isSavingBio}>
+              {isSavingBio ? "저장 중..." : "저장"}
+            </Button>
+          </form>
+        </FormCard>
       </section>
 
       <section className={styles.section}>
         <h2 className={styles.sectionTitle}>비밀번호 변경</h2>
-        <form onSubmit={handlePasswordSubmit}>
-          <Input
-            label="현재 비밀번호"
-            type="password"
-            value={currentPassword}
-            onChange={(e) => setCurrentPassword(e.target.value)}
-            autoComplete="current-password"
-            required
-          />
-          <Input
-            label="새 비밀번호 (8자 이상)"
-            type="password"
-            value={newPassword}
-            onChange={(e) => setNewPassword(e.target.value)}
-            autoComplete="new-password"
-            minLength={8}
-            required
-          />
-          {passwordSuccess && <p className={styles.success}>비밀번호가 변경되었습니다.</p>}
-          <ErrorMessage>{passwordError}</ErrorMessage>
-          <Button type="submit" icon={KeyRound} disabled={isSavingPassword}>
-            {isSavingPassword ? "변경 중..." : "변경하기"}
-          </Button>
-        </form>
+        <FormCard>
+          <form onSubmit={handlePasswordSubmit}>
+            <Input
+              label="현재 비밀번호"
+              icon={KeyRound}
+              type="password"
+              value={currentPassword}
+              onChange={(e) => setCurrentPassword(e.target.value)}
+              autoComplete="current-password"
+              required
+            />
+            <Input
+              label="새 비밀번호 (8자 이상)"
+              icon={KeyRound}
+              type="password"
+              value={newPassword}
+              onChange={(e) => setNewPassword(e.target.value)}
+              autoComplete="new-password"
+              minLength={8}
+              required
+            />
+            {passwordSuccess && <p className={styles.success}>비밀번호가 변경되었습니다.</p>}
+            <ErrorMessage>{passwordError}</ErrorMessage>
+            <Button type="submit" icon={KeyRound} disabled={isSavingPassword}>
+              {isSavingPassword ? "변경 중..." : "변경하기"}
+            </Button>
+          </form>
+        </FormCard>
       </section>
     </div>
   );
