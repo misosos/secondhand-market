@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { ChevronUp, MessagesSquare, Send } from "lucide-react";
 import { ChatMessageBubble } from "@/components/chat/ChatMessageBubble";
+import { Button } from "@/components/common/Button";
 import { EmptyState } from "@/components/common/EmptyState";
 import { ErrorMessage } from "@/components/common/ErrorMessage";
 import { Spinner } from "@/components/common/Spinner";
@@ -67,10 +68,9 @@ export default function GlobalChatPage() {
             onChange={(e) => setDraft(e.target.value)}
             placeholder="전체 채팅에 메시지를 입력하세요"
           />
-          <button type="submit" disabled={!draft.trim()}>
-            <Send size={15} strokeWidth={2.25} aria-hidden />
+          <Button type="submit" icon={Send} disabled={!draft.trim()}>
             전송
-          </button>
+          </Button>
         </form>
       </div>
     </div>

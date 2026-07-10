@@ -48,9 +48,3 @@
   background: var(--color-surface);
   color: var(--color-text);
 }
-
-.form button {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-}

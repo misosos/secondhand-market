@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, type ChangeEvent, type FormEvent } from "react";
-import { Save, Tag, Wallet, X } from "lucide-react";
+import { ImagePlus, Loader2, Save, Tag, Wallet, X } from "lucide-react";
 import { Button } from "@/components/common/Button";
 import { ErrorMessage } from "@/components/common/ErrorMessage";
 import { FormCard } from "@/components/common/FormCard";
@@ -122,9 +122,27 @@ export function ProductForm({ initialValues, onSubmit, submitLabel }: ProductFor
                 </button>
               </div>
             ))}
+            {imageUrls.length < MAX_IMAGES && (
+              <label className={styles.uploadTile}>
+                <input
+                  type="file"
+                  accept="image/*"
+                  multiple
+                  onChange={handleFileChange}
+                  disabled={isUploading}
+                  className={styles.uploadInput}
+                />
+                {isUploading ? (
+                  <Loader2 size={20} strokeWidth={2} className={styles.uploadSpinner} aria-hidden />
+                ) : (
+                  <>
+                    <ImagePlus size={20} strokeWidth={1.75} aria-hidden />
+                    <span>추가</span>
+                  </>
+                )}
+              </label>
+            )}
           </div>
-          <input type="file" accept="image/*" multiple onChange={handleFileChange} disabled={isUploading} />
-          {isUploading && <p className={styles.uploading}>업로드 중...</p>}
         </div>
 
         <ErrorMessage>{error}</ErrorMessage>

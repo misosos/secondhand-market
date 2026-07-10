@@ -7,6 +7,7 @@ import { ProductList } from "@/components/product/ProductList";
 import { useProducts } from "@/features/product/useProducts";
 import { ErrorMessage } from "@/components/common/ErrorMessage";
 import { Logo } from "@/components/common/Logo";
+import { Select } from "@/components/common/Select";
 import styles from "./page.module.css";
 
 export default function HomePage() {
@@ -55,16 +56,12 @@ export default function HomePage() {
                 onChange={(e) => setKeywordInput(e.target.value)}
               />
             </div>
-            <select
-              className={styles.select}
-              value={`${sortBy}:${order}`}
-              onChange={(e) => handleSortChange(e.target.value)}
-            >
+            <Select value={`${sortBy}:${order}`} onChange={(e) => handleSortChange(e.target.value)}>
               <option value="createdAt:desc">최신순</option>
               <option value="createdAt:asc">오래된순</option>
               <option value="price:asc">낮은 가격순</option>
               <option value="price:desc">높은 가격순</option>
-            </select>
+            </Select>
           </form>
         </div>
       </div>

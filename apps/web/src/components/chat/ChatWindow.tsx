@@ -5,6 +5,7 @@ import { createPortal } from "react-dom";
 import { Banknote, ChevronUp, MessageCircle, Send, X } from "lucide-react";
 import { useChat } from "@/features/chat/useChat";
 import { useAuth } from "@/features/auth/useAuth";
+import { Button } from "@/components/common/Button";
 import { Spinner } from "@/components/common/Spinner";
 import { EmptyState } from "@/components/common/EmptyState";
 import { ErrorMessage } from "@/components/common/ErrorMessage";
@@ -156,10 +157,9 @@ export function ChatWindow({ peerId, peerUsername, onClose }: ChatWindowProps) {
               placeholder={`보낼 금액 (내 잔액 ${(user?.balance ?? 0).toLocaleString()}원)`}
               autoFocus
             />
-            <button type="submit" disabled={isSendingTransfer || !transferAmount}>
-              <Banknote size={14} strokeWidth={2.25} aria-hidden />
+            <Button type="submit" icon={Banknote} disabled={isSendingTransfer || !transferAmount}>
               {isSendingTransfer ? "보내는 중..." : "보내기"}
-            </button>
+            </Button>
           </form>
         )}
 
@@ -170,10 +170,9 @@ export function ChatWindow({ peerId, peerUsername, onClose }: ChatWindowProps) {
             onChange={(e) => setDraft(e.target.value)}
             placeholder="메시지를 입력하세요"
           />
-          <button type="submit" disabled={!draft.trim()}>
-            <Send size={15} strokeWidth={2.25} aria-hidden />
+          <Button type="submit" icon={Send} disabled={!draft.trim()}>
             전송
-          </button>
+          </Button>
         </form>
       </div>
     </div>,

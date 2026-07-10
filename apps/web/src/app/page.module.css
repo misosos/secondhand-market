@@ -103,12 +103,3 @@
 .searchInput::placeholder {
   color: var(--color-muted);
 }
-
-.select {
-  padding: 11px 16px;
-  border-radius: 980px;
-  border: 1px solid var(--color-border);
-  background: var(--color-surface);
-  color: var(--color-text);
-  font-size: 0.9rem;
-}
