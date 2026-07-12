@@ -1,79 +1,77 @@
-# Security design notes
+# 보안 설계 노트
 
-This file documents deliberate security trade-offs — either accepted
-limitations or the reasoning behind a specific implementation — so a
-checklist-style review doesn't have to be re-derived from scratch. Update
-this file when the reasoning changes.
+이 문서는 의도적인 보안 트레이드오프 — 받아들인 한계이거나 특정 구현 뒤에 있는
+논리 — 를 기록하여, 체크리스트 형태의 리뷰를 매번 처음부터 다시 도출하지 않아도
+되도록 합니다. 판단 근거가 바뀌면 이 문서도 함께 업데이트하세요.
 
-## Auth tokens: httpOnly cookies + double-submit CSRF (as of 2026-07-09)
+## 인증 토큰: httpOnly 쿠키 + 더블 서브밋 CSRF (2026-07-09 기준)
 
-`AuthController` issues `accessToken`/`refreshToken` as httpOnly cookies
-(never in the JSON response body — see the comment on `IssuedTokens` in
-`auth.service.ts`) instead of the sessionStorage/Bearer-header scheme this
-replaced. `CsrfGuard` (global) enforces a double-submit cookie check on
-every mutating request outside the auth-bootstrap endpoints: the frontend
-reads the non-httpOnly `csrfToken` cookie and echoes it as `X-CSRF-Token`
-(see `lib/api.ts`); a cross-origin attacker can't read that cookie to
-forge the header.
+`AuthController`는 `accessToken`/`refreshToken`을 (JSON 응답 본문에는 절대
+담지 않고 — `auth.service.ts`의 `IssuedTokens`에 달린 주석 참고) httpOnly
+쿠키로 발급합니다. 이는 이전에 쓰던 sessionStorage/Bearer 헤더 방식을
+대체한 것입니다. `CsrfGuard`(전역)는 인증 부트스트랩 엔드포인트를 제외한
+모든 변경성(mutating) 요청에 대해 더블 서브밋 쿠키 검증을 수행합니다:
+프론트엔드는 httpOnly가 아닌 `csrfToken` 쿠키를 읽어 `X-CSRF-Token`
+헤더로 그대로 반환하며(`lib/api.ts` 참고), 크로스 오리진 공격자는 이
+쿠키를 읽을 수 없으므로 헤더를 위조할 수 없습니다.
 
-**Trade-off knowingly accepted:** cookies are shared across every tab of
-the same origin, unlike the sessionStorage this replaced. Logging into a
-second account in another tab now overwrites the first tab's session —
-this is a real, deliberate regression from the previous design (which used
-sessionStorage specifically to avoid it), traded for httpOnly's XSS
-protection and literal compliance with a cookie-based-session security
-checklist. If multi-account-per-browser ever becomes a real use case,
-revisit — the fix would need scoping sessions to something other than the
-bare cookie (e.g. a per-tab session id echoed by the client).
+**의도적으로 감수한 트레이드오프:** 쿠키는 이전 방식인 sessionStorage와
+달리 동일 오리진의 모든 탭에서 공유됩니다. 다른 탭에서 두 번째 계정으로
+로그인하면 첫 번째 탭의 세션을 덮어쓰게 되는데, 이는 이전 설계(정확히
+이를 피하기 위해 sessionStorage를 사용했던)로부터의 실질적이고 의도적인
+퇴보입니다. 이를 httpOnly의 XSS 방어와 쿠키 기반 세션 보안 체크리스트
+준수라는 이점과 맞바꾼 것입니다. 만약 브라우저당 다중 계정 사용이 실제
+요구사항이 된다면 재검토가 필요합니다 — 그 경우 수정 방향은 단순 쿠키가
+아닌 다른 것(예: 클라이언트가 반환하는 탭별 세션 id)으로 세션 범위를
+지정하는 방식이 되어야 합니다.
 
-WebSocket auth reads the same `accessToken` cookie off the handshake
-(`ws-jwt.guard.ts`'s `extractTokenFromSocket`) rather than a client-sent
-token, so the socket client no longer holds or transmits it manually
-either.
+WebSocket 인증은 클라이언트가 별도로 전송하는 토큰이 아니라, 핸드셰이크에
+실려 온 동일한 `accessToken` 쿠키를 읽습니다(`ws-jwt.guard.ts`의
+`extractTokenFromSocket`). 따라서 소켓 클라이언트도 더 이상 토큰을 직접
+보관하거나 전송하지 않습니다.
 
-## WebSocket transport encryption (WSS)
+## WebSocket 전송 암호화 (WSS)
 
-`ChatGateway.isSecureEnough` enforces TLS **only when `NODE_ENV=production`**:
-it accepts the connection if `handshake.secure` is true (this process
-terminates TLS itself) or the `X-Forwarded-Proto: https` header is present
-(a reverse proxy — nginx/ALB/Cloudflare/etc. — terminated TLS in front of
-it; virtually universal convention). Local dev (`NODE_ENV=development`) is
-untouched since there's no TLS in front of it to require.
+`ChatGateway.isSecureEnough`는 `NODE_ENV=production`일 때**만** TLS를
+강제합니다: `handshake.secure`가 true이거나(이 프로세스 자체가 TLS를
+종료하는 경우), `X-Forwarded-Proto: https` 헤더가 존재하면(nginx/ALB/
+Cloudflare 등 리버스 프록시가 앞단에서 TLS를 종료한 경우 — 거의 보편적인
+관례) 연결을 허용합니다. 로컬 개발 환경(`NODE_ENV=development`)은 앞단에
+TLS가 없으므로 이 검사를 건드리지 않습니다.
 
-**Residual risk, by design:** if a production deployment sits behind a
-proxy that does *not* set `X-Forwarded-Proto` (misconfigured or a proxy
-that uses a different header), this check will incorrectly reject every
-connection. There was no way to verify this against a real deployment
-topology since none is decided yet — confirm the proxy sets this header
-(nearly all default to it) before relying on this check in production, or
-adjust `isSecureEnough` if a different proxy convention is in use.
+**의도적으로 남겨둔 잔여 위험:** 만약 프로덕션 배포가 `X-Forwarded-Proto`를
+설정하지 *않는*(설정이 잘못되었거나 다른 헤더 관례를 쓰는) 프록시 뒤에
+있다면, 이 검사는 모든 연결을 잘못 거부하게 됩니다. 아직 배포 토폴로지가
+확정되지 않아 실제 배포 환경으로 검증할 방법이 없었습니다 — 프로덕션에서
+이 검사에 의존하기 전에 프록시가 이 헤더를 설정하는지 확인하거나(대부분
+기본값으로 설정함), 다른 프록시 관례를 쓴다면 `isSecureEnough`를
+조정하세요.
 
-## IP-based rate limiting behind an unconfirmed proxy topology (as of 2026-07-12)
+## 확정되지 않은 프록시 토폴로지 뒤에서의 IP 기반 rate limiting (2026-07-12 기준)
 
-The global `ThrottlerGuard` and the stricter per-endpoint throttles
-(`LOGIN_THROTTLE`, `SIGNUP_THROTTLE`) all key on Express's `req.ip`, which
-Express derives from the raw socket unless `app.set('trust proxy', ...)` is
-configured — it currently isn't. Behind a reverse proxy (the same topology
-the WSS section above already assumes for `X-Forwarded-Proto`), every
-client's `req.ip` would collapse to the proxy's address, folding all
-distinct users into a single rate-limit bucket. That breaks the
-brute-force login defense's core assumption (one aggressive/failed-login
-client would throttle every other user sharing the proxy) and makes
-per-IP throttling meaningless.
+전역 `ThrottlerGuard`와 엔드포인트별로 더 엄격한 throttle
+(`LOGIN_THROTTLE`, `SIGNUP_THROTTLE`)은 모두 Express의 `req.ip`를 키로
+사용하는데, `app.set('trust proxy', ...)`가 설정되지 않은 한 Express는
+이를 raw 소켓에서 도출합니다 — 현재는 설정되어 있지 않습니다. (위 WSS
+섹션에서 `X-Forwarded-Proto`를 가정한 것과 동일한) 리버스 프록시 뒤에서는
+모든 클라이언트의 `req.ip`가 프록시의 주소 하나로 뭉쳐버려, 서로 다른
+사용자들이 하나의 rate-limit 버킷으로 합쳐지게 됩니다. 이는 브루트포스
+로그인 방어의 핵심 전제를 무너뜨리며(공격적이거나 로그인에 실패한 클라이언트
+한 명이 같은 프록시를 공유하는 다른 모든 사용자를 함께 제한하게 됨),
+IP별 throttling을 무의미하게 만듭니다.
 
-**Deliberately left unconfigured:** same reasoning as the WSS section —
-the correct `trust proxy` hop count depends on the real deployment
-topology (single nginx? CDN + load balancer?), which isn't decided yet.
-Setting the wrong hop count is actively worse than leaving it unset: it
-can make `req.ip` trust a client-supplied `X-Forwarded-For` value,
-letting an attacker spoof a fresh IP per request and bypass the login
-lockout entirely. Configure `app.set('trust proxy', N)` (exact `N` =
-number of trusted proxy hops in front of the API) once that topology is
-fixed, and re-verify the login-lockout test scenario (6.2 in the dev
-report) still behaves correctly through the real proxy chain.
+**의도적으로 설정하지 않음:** WSS 섹션과 동일한 이유입니다 — 올바른
+`trust proxy` hop count는 실제 배포 토폴로지(단일 nginx? CDN + 로드
+밸런서?)에 달려 있는데, 아직 결정되지 않았습니다. 잘못된 hop count를
+설정하는 것은 아예 설정하지 않는 것보다 오히려 더 위험합니다: `req.ip`가
+클라이언트가 보낸 `X-Forwarded-For` 값을 신뢰하게 만들 수 있어, 공격자가
+요청마다 새로운 IP를 위조해 로그인 잠금을 완전히 우회할 수 있게 됩니다.
+토폴로지가 확정되면 `app.set('trust proxy', N)`(정확한 `N` = API 앞단의
+신뢰할 수 있는 프록시 홉 개수)을 설정하고, 실제 프록시 체인을 통과하는
+로그인 잠금 테스트 시나리오(개발 리포트의 6.2)가 여전히 올바르게
+동작하는지 재검증하세요.
 
-## Signup-granted wallet balance (unrelated to auth, noted for completeness)
+## 가입 시 지급되는 지갑 잔액 (인증과 무관하지만 완전성을 위해 기록)
 
-`SIGNUP_INITIAL_BALANCE` grants a virtual balance at signup with no real
-payment gateway behind it — see the comment on `User.balance` in
-`schema.prisma`.
+`SIGNUP_INITIAL_BALANCE`는 실제 결제 게이트웨이 없이 가입 시 가상 잔액을
+지급합니다 — `schema.prisma`의 `User.balance`에 달린 주석 참고.
