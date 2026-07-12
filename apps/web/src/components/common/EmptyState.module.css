@@ -1,0 +1,19 @@
+.wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 48px 16px;
+  color: var(--color-muted);
+  text-align: center;
+}
+
+.wrap svg {
+  opacity: 0.55;
+}
+
+.wrap p {
+  font-size: 14px;
+  margin: 0;
+}

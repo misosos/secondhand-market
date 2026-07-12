@@ -1,0 +1,87 @@
+.header {
+  position: sticky;
+  top: 0;
+  z-index: 30;
+  background: color-mix(in srgb, var(--color-bg) 70%, transparent);
+  border-bottom: 1px solid var(--hairline);
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+}
+
+.inner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 52px;
+}
+
+.logo {
+  display: inline-flex;
+  align-items: center;
+}
+
+.right {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.nav {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  font-size: 12.5px;
+  font-weight: 590;
+  padding: 4px;
+  border-radius: 999px;
+  background: var(--color-bg-elevated);
+}
+
+.nav a {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  text-decoration: none;
+  color: var(--color-muted);
+  padding: 6px 12px;
+  border-radius: 999px;
+  transition: color 0.2s var(--spring-soft), background 0.2s var(--spring-soft);
+  white-space: nowrap;
+}
+
+.nav a svg {
+  flex-shrink: 0;
+  opacity: 0.75;
+}
+
+.nav a:hover {
+  color: var(--color-text);
+  background: var(--color-surface);
+}
+
+.balance {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--color-text);
+  white-space: nowrap;
+}
+
+.logoutButton {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--color-muted);
+  font-size: 12.5px;
+  font-weight: 590;
+  padding: 6px 12px;
+}
+
+.logoutButton:hover {
+  color: var(--color-danger);
+}

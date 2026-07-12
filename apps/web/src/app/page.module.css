@@ -1,0 +1,105 @@
+.hero {
+  /* bleed to full viewport width even though .container caps at 980px */
+  position: relative;
+  overflow: hidden;
+  margin-left: calc(50% - 50vw);
+  margin-right: calc(50% - 50vw);
+  padding-left: calc(50vw - 50%);
+  padding-right: calc(50vw - 50%);
+  margin-top: -24px;
+  margin-bottom: 40px;
+  padding-top: 88px;
+  padding-bottom: 44px;
+  background: var(--color-bg);
+  border-bottom: 1px solid var(--hairline);
+}
+
+/* Soft brand-colored glow behind the headline — just enough depth to keep
+   the hero from reading as flat text-on-background, still restrained
+   enough to not compete with the product grid below. */
+.heroGlow {
+  position: absolute;
+  top: -160px;
+  left: 50%;
+  width: 900px;
+  height: 500px;
+  transform: translateX(-58%);
+  background: radial-gradient(closest-side, color-mix(in srgb, var(--color-primary) 16%, transparent), transparent);
+  pointer-events: none;
+}
+
+.heroInner {
+  position: relative;
+  max-width: 980px;
+  width: 100%;
+  margin: 0 auto;
+  padding: 0 22px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.heroBrand {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-primary);
+}
+
+.heroHeadline {
+  font-family: var(--font-display);
+  font-weight: 300;
+  font-size: clamp(2.2rem, 5.4vw, 3.8rem);
+  line-height: 1.05;
+  letter-spacing: -0.025em;
+  margin: 0;
+}
+
+.heroHeadline b {
+  font-weight: 700;
+}
+
+.heroSub {
+  color: var(--color-muted);
+  max-width: 30rem;
+  font-size: clamp(1rem, 1.6vw, 1.15rem);
+  letter-spacing: -0.005em;
+}
+
+.toolbar {
+  display: flex;
+  gap: 10px;
+  margin-top: 10px;
+  max-width: 640px;
+  flex-wrap: wrap;
+}
+
+.searchWrap {
+  position: relative;
+  flex: 1;
+  min-width: 200px;
+}
+
+.searchIcon {
+  position: absolute;
+  left: 16px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--color-muted);
+  pointer-events: none;
+}
+
+.searchInput {
+  width: 100%;
+  padding: 11px 16px 11px 40px;
+  border-radius: 980px;
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  color: var(--color-text);
+}
+
+.searchInput::placeholder {
+  color: var(--color-muted);
+}

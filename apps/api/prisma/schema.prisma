@@ -1,0 +1,199 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum AccountStatus {
+  ACTIVE
+  DORMANT
+}
+
+enum Role {
+  USER
+  ADMIN
+}
+
+enum ProductStatus {
+  ACTIVE
+  BLOCKED
+  SOLD
+}
+
+enum ReportTargetType {
+  USER
+  PRODUCT
+}
+
+enum ReportStatus {
+  PENDING
+  RESOLVED
+  REJECTED
+}
+
+enum ChatMessageType {
+  TEXT
+  TRANSFER
+}
+
+// PENDING only ever applies to a chat transfer awaiting the recipient's
+// 받기/거절 decision (see TransactionService.initiateTransfer) — a product
+// purchase (Transaction.productId set) is created straight into COMPLETED
+// since there's no accept step for those.
+enum TransactionStatus {
+  PENDING
+  COMPLETED
+  REJECTED
+}
+
+model User {
+  id          String        @id @default(uuid())
+  username    String        @unique
+  password    String
+  bio         String?       @db.Text
+  status      AccountStatus @default(ACTIVE)
+  role        Role          @default(USER)
+  reportCount Int           @default(0)
+  // Virtual wallet balance (KRW-won-denominated integer, same unit as
+  // Product.price). No real payment gateway backs this — signup grants a
+  // configurable starting balance (see SIGNUP_INITIAL_BALANCE) and it only
+  // ever moves between users via a Transaction (product purchase).
+  balance     Int           @default(0)
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+  deletedAt   DateTime?
+
+  products        Product[]
+  reportsMade     Report[]      @relation("Reporter")
+  reportsGot      Report[]      @relation("ReportedUser")
+  reportsReviewed Report[]      @relation("ReportReviewedBy")
+  messages        ChatMessage[]
+  purchases       Transaction[] @relation("Purchases")
+  sales           Transaction[] @relation("Sales")
+
+  @@index([status])
+}
+
+model Product {
+  id           String         @id @default(uuid())
+  name         String
+  description  String         @db.Text
+  price        Int
+  status       ProductStatus  @default(ACTIVE)
+  reportCount  Int            @default(0)
+  sellerId     String
+  seller       User           @relation(fields: [sellerId], references: [id])
+  images       ProductImage[]
+  reportsGot   Report[]       @relation("ReportedProduct")
+  transactions Transaction[]
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+  deletedAt    DateTime?
+
+  @@index([status, createdAt])
+  @@index([sellerId])
+}
+
+model ProductImage {
+  id        String  @id @default(uuid())
+  url       String
+  sortOrder Int     @default(0)
+  productId String
+  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+}
+
+model Report {
+  id         String           @id @default(uuid())
+  reporterId String
+  reporter   User             @relation("Reporter", fields: [reporterId], references: [id])
+  targetType ReportTargetType
+  reason     String           @db.Text
+  status     ReportStatus     @default(PENDING)
+  createdAt  DateTime         @default(now())
+
+  targetUserId    String?
+  targetUser      User?    @relation("ReportedUser", fields: [targetUserId], references: [id])
+  targetProductId String?
+  targetProduct   Product? @relation("ReportedProduct", fields: [targetProductId], references: [id])
+
+  // Audit trail for admin review actions (who decided, and when) — the
+  // status column alone can't answer "who approved this" after the fact.
+  reviewedById String?
+  reviewedBy   User?     @relation("ReportReviewedBy", fields: [reviewedById], references: [id])
+  reviewedAt   DateTime?
+
+  @@unique([reporterId, targetUserId])
+  @@unique([reporterId, targetProductId])
+}
+
+// A completed product purchase, and the only way balance ever moves between
+// users. Created atomically alongside the buyer/seller balance updates and
+// the product's ACTIVE -> SOLD flip (see TransactionService.purchase) so
+// this row is always a truthful record of a transfer that actually
+// happened — never created speculatively or before funds move.
+model Transaction {
+  id        String            @id @default(uuid())
+  buyerId   String
+  buyer     User              @relation("Purchases", fields: [buyerId], references: [id])
+  sellerId  String
+  seller    User              @relation("Sales", fields: [sellerId], references: [id])
+  // Null for a direct chat-to-chat transfer (Danggeun-Pay-style "송금"),
+  // set for a product purchase. Either way this row is the one source of
+  // truth for every balance movement, so admin oversight (listAll) doesn't
+  // need to know which kind it's looking at.
+  productId String?
+  product   Product?          @relation(fields: [productId], references: [id])
+  amount    Int
+  // Only meaningful for a chat transfer's escrow hold — see the enum doc.
+  status    TransactionStatus @default(COMPLETED)
+  createdAt DateTime          @default(now())
+
+  chatMessage ChatMessage?
+
+  @@index([buyerId])
+  @@index([sellerId])
+}
+
+model ChatRoom {
+  id        String        @id @default(uuid())
+  isGlobal  Boolean       @default(false)
+  createdAt DateTime      @default(now())
+  members   ChatMember[]
+  messages  ChatMessage[]
+}
+
+model ChatMember {
+  roomId String
+  userId String
+  room   ChatRoom @relation(fields: [roomId], references: [id])
+
+  @@id([roomId, userId])
+}
+
+model ChatMessage {
+  id            String          @id @default(uuid())
+  roomId        String
+  senderId      String
+  content       String          @db.Text
+  // TRANSFER messages carry `amount` (the wallet transfer that triggered
+  // them, see ChatService.sendTransfer) so the client can render a
+  // distinct "sent/received money" bubble instead of a plain text one.
+  // `content` is still populated with a human-readable fallback so any
+  // code that only reads `content` (search, notifications, etc.) still
+  // shows something sensible.
+  type          ChatMessageType @default(TEXT)
+  amount        Int?
+  // Links a TRANSFER message to the escrow Transaction it triggered, so the
+  // client can render the current 대기중/받음/거절됨 state and the
+  // accept/reject buttons resolve to the right row (see ChatService).
+  transactionId String?         @unique
+  transaction   Transaction?    @relation(fields: [transactionId], references: [id])
+  createdAt     DateTime        @default(now())
+  room          ChatRoom        @relation(fields: [roomId], references: [id])
+  sender        User            @relation(fields: [senderId], references: [id])
+
+  @@index([roomId, createdAt])
+}

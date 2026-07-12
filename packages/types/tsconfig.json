@@ -1,0 +1,10 @@
+{
+  "extends": "@secondhand/config/base.json",
+  "compilerOptions": {
+    "outDir": "dist",
+    "rootDir": "src",
+    "module": "commonjs",
+    "declaration": true
+  },
+  "include": ["src"]
+}

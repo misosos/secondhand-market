@@ -1,0 +1,29 @@
+.nav {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 20px;
+}
+
+.link {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 7px 16px;
+  border-radius: 999px;
+  border: 1px solid transparent;
+  background: var(--color-bg-elevated);
+  color: var(--color-muted);
+  font-size: 13px;
+  font-weight: 590;
+  text-decoration: none;
+  transition: background 0.2s ease, color 0.2s ease;
+}
+
+.link:hover {
+  color: var(--color-text);
+}
+
+.linkActive {
+  background: var(--color-primary);
+  color: #fff;
+}
