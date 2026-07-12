@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { use, useState } from "react";
 import { Pencil, ShoppingBag, Trash2 } from "lucide-react";
 import { ProductStatus, ReportTargetType } from "@secondhand/types";
 import { Button } from "@/components/common/Button";
@@ -16,9 +16,10 @@ import { deleteProduct, purchaseProduct } from "@/features/product/api";
 import { ApiError } from "@/lib/api";
 import styles from "./page.module.css";
 
-export default function ProductDetailPage({ params }: { params: { id: string } }) {
+export default function ProductDetailPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = use(params);
   const { user, refreshUser } = useAuth();
-  const { product, isLoading, error, reload } = useProductDetail(params.id);
+  const { product, isLoading, error, reload } = useProductDetail(id);
   const [activeImage, setActiveImage] = useState(0);
   const [isDeleting, setIsDeleting] = useState(false);
   const [isPurchasing, setIsPurchasing] = useState(false);

@@ -145,6 +145,20 @@ export class ProductService {
     }
   }
 
+  // Presigned uploads mint a real write URL into shared storage, so — same
+  // as create/update/remove above — a dormant account shouldn't be able to
+  // call this either. It has no product to attach the check to (the
+  // controller calls this before ever talking to StorageService), so it
+  // gets its own entry point rather than reusing assertSellerActive's
+  // product-specific error message.
+  async assertUploadEligible(sellerId: string): Promise<void> {
+    const seller = await this.userService.findActiveById(sellerId);
+    if (!seller) throw new NotFoundException("Seller not found");
+    if (seller.status === AccountStatus.DORMANT) {
+      throw new ForbiddenException("Dormant accounts cannot upload images");
+    }
+  }
+
   private toSummary(product: ProductWithImages): ProductSummary {
     return {
       id: product.id,

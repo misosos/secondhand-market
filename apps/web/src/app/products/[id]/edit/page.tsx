@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useEffect } from "react";
+import { use, useEffect } from "react";
 import { ErrorMessage } from "@/components/common/ErrorMessage";
 import { Spinner } from "@/components/common/Spinner";
 import { ProductForm, type ProductFormValues } from "@/components/product/ProductForm";
@@ -9,16 +9,17 @@ import { useRequireAuth } from "@/features/auth/useRequireAuth";
 import { updateProduct } from "@/features/product/api";
 import { useProductDetail } from "@/features/product/useProductDetail";
 
-export default function EditProductPage({ params }: { params: { id: string } }) {
+export default function EditProductPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = use(params);
   const { user, isLoading: isAuthLoading } = useRequireAuth();
-  const { product, isLoading, error } = useProductDetail(params.id);
+  const { product, isLoading, error } = useProductDetail(id);
   const router = useRouter();
 
   useEffect(() => {
     if (!isLoading && !isAuthLoading && product && user && product.sellerId !== user.id) {
-      router.replace(`/products/${params.id}`);
+      router.replace(`/products/${id}`);
     }
-  }, [isLoading, isAuthLoading, product, user, params.id, router]);
+  }, [isLoading, isAuthLoading, product, user, id, router]);
 
   if (isAuthLoading || isLoading || !user) return <Spinner />;
   if (error || !product) return <ErrorMessage>{error ?? "상품을 찾을 수 없습니다."}</ErrorMessage>;

@@ -1,6 +1,8 @@
 import { AccountStatus, Role } from "./enums";
 
-// Never includes `password`. This is the shape the API is allowed to return.
+// Never includes `password`. This is the shape the API is allowed to return
+// to the account's own owner (self, via /users/me and login/signup) — it
+// carries balance/role/status, which are private to that account.
 export interface PublicUser {
   id: string;
   username: string;
@@ -8,6 +10,17 @@ export interface PublicUser {
   status: AccountStatus;
   role: Role;
   balance: number;
+  createdAt: string;
+}
+
+// Shown on someone else's profile (GET /users/:id, unauthenticated-readable).
+// Deliberately excludes balance/role/status from PublicUser — those are
+// private financial/authorization data with no legitimate reason to be
+// visible to other users or anonymous visitors.
+export interface PublicUserSummary {
+  id: string;
+  username: string;
+  bio: string | null;
   createdAt: string;
 }
 

@@ -50,7 +50,8 @@ export class ProductController {
   }
 
   @Post("uploads/presigned")
-  presignedUpload(@Body() dto: PresignedUploadDto) {
+  async presignedUpload(@CurrentUser("sub") sellerId: string, @Body() dto: PresignedUploadDto) {
+    await this.productService.assertUploadEligible(sellerId);
     return this.storageService.createPresignedUploadUrl(dto.fileName, dto.contentType);
   }
 }

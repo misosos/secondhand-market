@@ -91,6 +91,23 @@ describe("ProductService", () => {
     });
   });
 
+  describe("assertUploadEligible", () => {
+    it("rejects a dormant seller from minting a presigned upload URL", async () => {
+      userService.findActiveById.mockResolvedValue({ ...activeSeller, status: AccountStatus.DORMANT });
+      await expect(service.assertUploadEligible("seller-1")).rejects.toThrow(ForbiddenException);
+    });
+
+    it("rejects an unknown seller", async () => {
+      userService.findActiveById.mockResolvedValue(null);
+      await expect(service.assertUploadEligible("ghost")).rejects.toThrow(NotFoundException);
+    });
+
+    it("allows an active seller", async () => {
+      userService.findActiveById.mockResolvedValue(activeSeller);
+      await expect(service.assertUploadEligible("seller-1")).resolves.toBeUndefined();
+    });
+  });
+
   describe("remove", () => {
     it("rejects a dormant seller before ever looking up the product", async () => {
       userService.findActiveById.mockResolvedValue({ ...activeSeller, status: AccountStatus.DORMANT });

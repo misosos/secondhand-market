@@ -48,6 +48,30 @@ topology since none is decided yet — confirm the proxy sets this header
 (nearly all default to it) before relying on this check in production, or
 adjust `isSecureEnough` if a different proxy convention is in use.
 
+## IP-based rate limiting behind an unconfirmed proxy topology (as of 2026-07-12)
+
+The global `ThrottlerGuard` and the stricter per-endpoint throttles
+(`LOGIN_THROTTLE`, `SIGNUP_THROTTLE`) all key on Express's `req.ip`, which
+Express derives from the raw socket unless `app.set('trust proxy', ...)` is
+configured — it currently isn't. Behind a reverse proxy (the same topology
+the WSS section above already assumes for `X-Forwarded-Proto`), every
+client's `req.ip` would collapse to the proxy's address, folding all
+distinct users into a single rate-limit bucket. That breaks the
+brute-force login defense's core assumption (one aggressive/failed-login
+client would throttle every other user sharing the proxy) and makes
+per-IP throttling meaningless.
+
+**Deliberately left unconfigured:** same reasoning as the WSS section —
+the correct `trust proxy` hop count depends on the real deployment
+topology (single nginx? CDN + load balancer?), which isn't decided yet.
+Setting the wrong hop count is actively worse than leaving it unset: it
+can make `req.ip` trust a client-supplied `X-Forwarded-For` value,
+letting an attacker spoof a fresh IP per request and bypass the login
+lockout entirely. Configure `app.set('trust proxy', N)` (exact `N` =
+number of trusted proxy hops in front of the API) once that topology is
+fixed, and re-verify the login-lockout test scenario (6.2 in the dev
+report) still behaves correctly through the real proxy chain.
+
 ## Signup-granted wallet balance (unrelated to auth, noted for completeness)
 
 `SIGNUP_INITIAL_BALANCE` grants a virtual balance at signup with no real

@@ -1,5 +1,6 @@
 import "reflect-metadata";
 import cookieParser from "cookie-parser";
+import helmet from "helmet";
 import { NestFactory, Reflector } from "@nestjs/core";
 import { ClassSerializerInterceptor, ValidationPipe } from "@nestjs/common";
 import { AppModule } from "./app.module";
@@ -7,6 +8,18 @@ import { RedisIoAdapter } from "./infra/redis/redis-io.adapter";
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
+
+  // This is a JSON+WS API, never HTML — CSP/COEP/etc. protect page
+  // rendering and would be dead weight here, so only the headers relevant
+  // to an API response are worth keeping (also strips X-Powered-By).
+  app.use(
+    helmet({
+      contentSecurityPolicy: false,
+      crossOriginEmbedderPolicy: false,
+      crossOriginOpenerPolicy: false,
+      crossOriginResourcePolicy: false,
+    }),
+  );
 
   app.enableCors({
     origin: process.env.CORS_ORIGIN ?? "http://localhost:3000",

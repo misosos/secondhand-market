@@ -6,6 +6,7 @@ import {
   IsOptional,
   IsString,
   Min,
+  MinLength,
   validateSync,
 } from "class-validator";
 
@@ -39,8 +40,16 @@ class EnvironmentVariables {
   @IsNotEmpty()
   REDIS_URL!: string;
 
+  // MinLength guards against a weak/short secret making JWTs forgeable by
+  // brute force — applies in every env, including dev (.env.example ships a
+  // 32+ char placeholder so `cp .env.example .env` still boots). A second
+  // check below (in validateEnv, production-only) additionally refuses to
+  // boot with .env.example's exact placeholder value still in place, since
+  // that string is public (checked into this repo) and would make tokens
+  // forgeable by anyone who's seen it.
   @IsString()
   @IsNotEmpty()
+  @MinLength(32, { message: "JWT_ACCESS_SECRET must be at least 32 characters" })
   JWT_ACCESS_SECRET!: string;
 
   @IsString()
@@ -49,6 +58,7 @@ class EnvironmentVariables {
 
   @IsString()
   @IsNotEmpty()
+  @MinLength(32, { message: "JWT_REFRESH_SECRET must be at least 32 characters" })
   JWT_REFRESH_SECRET!: string;
 
   @IsString()
@@ -101,6 +111,13 @@ class EnvironmentVariables {
   S3_PRESIGNED_URL_EXPIRES_IN: number = 300;
 }
 
+// Exact values .env.example ships — fine to boot dev/test with (nothing
+// sensitive reachable there), but must never reach a real deployment.
+const PLACEHOLDER_JWT_SECRETS: Partial<Record<keyof EnvironmentVariables, string>> = {
+  JWT_ACCESS_SECRET: "change-me-access-secret-please-generate-a-real-one",
+  JWT_REFRESH_SECRET: "change-me-refresh-secret-please-generate-a-real-one",
+};
+
 export function validateEnv(config: Record<string, unknown>): EnvironmentVariables {
   const validated = plainToInstance(EnvironmentVariables, config, {
     enableImplicitConversion: true,
@@ -109,6 +126,14 @@ export function validateEnv(config: Record<string, unknown>): EnvironmentVariabl
   const errors = validateSync(validated, { skipMissingProperties: false });
   if (errors.length > 0) {
     throw new Error(`Invalid environment variables:\n${errors.toString()}`);
+  }
+
+  if (validated.NODE_ENV === NodeEnv.production) {
+    for (const [key, placeholder] of Object.entries(PLACEHOLDER_JWT_SECRETS)) {
+      if (validated[key as keyof EnvironmentVariables] === placeholder) {
+        throw new Error(`${key} is still the .env.example placeholder — generate a real secret for production`);
+      }
+    }
   }
 
   return validated;

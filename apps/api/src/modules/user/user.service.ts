@@ -5,6 +5,7 @@ import type {
   AccountStatus as SharedAccountStatus,
   ChangePasswordRequest,
   PublicUser,
+  PublicUserSummary,
   Role,
   UpdateProfileRequest,
 } from "@secondhand/types";
@@ -28,10 +29,20 @@ export class UserService {
     return this.prisma.user.findFirst({ where: { id, deletedAt: null } });
   }
 
+  // Self only (/users/me) — includes balance/role/status, which are private
+  // to the account owner. Never route another user's id through this.
   async getPublicProfile(id: string): Promise<PublicUser> {
     const user = await this.findActiveById(id);
     if (!user) throw new NotFoundException("User not found");
     return this.toPublicUser(user);
+  }
+
+  // Anyone's profile (GET /users/:id, unauthenticated-readable) — see
+  // PublicUserSummary for why balance/role/status are excluded here.
+  async getPublicSummary(id: string): Promise<PublicUserSummary> {
+    const user = await this.findActiveById(id);
+    if (!user) throw new NotFoundException("User not found");
+    return { id: user.id, username: user.username, bio: user.bio, createdAt: user.createdAt.toISOString() };
   }
 
   async updateBio(userId: string, dto: UpdateProfileRequest): Promise<PublicUser> {

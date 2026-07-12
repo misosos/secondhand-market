@@ -29,6 +29,6 @@ export class UserController {
   @Public()
   @Get(":id")
   getById(@Param("id") id: string) {
-    return this.userService.getPublicProfile(id);
+    return this.userService.getPublicSummary(id);
   }
 }

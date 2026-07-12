@@ -64,6 +64,42 @@ describe("UserService", () => {
     });
   });
 
+  describe("getPublicSummary", () => {
+    it("throws NotFoundException for a missing or soft-deleted user", async () => {
+      prisma.user.findFirst.mockResolvedValue(null);
+      await expect(service.getPublicSummary("ghost")).rejects.toThrow(NotFoundException);
+    });
+
+    it("never leaks balance, role, or status to another user's profile view", async () => {
+      prisma.user.findFirst.mockResolvedValue({
+        id: "u1",
+        username: "alice",
+        password: "super-secret-hash",
+        bio: "hi",
+        status: AccountStatus.ACTIVE,
+        role: "ADMIN",
+        balance: 1_000_000,
+        reportCount: 0,
+        createdAt: new Date("2026-01-01T00:00:00.000Z"),
+        updatedAt: new Date(),
+        deletedAt: null,
+      });
+
+      const summary = await service.getPublicSummary("u1");
+
+      expect(summary).toEqual({
+        id: "u1",
+        username: "alice",
+        bio: "hi",
+        createdAt: "2026-01-01T00:00:00.000Z",
+      });
+      expect(summary).not.toHaveProperty("balance");
+      expect(summary).not.toHaveProperty("role");
+      expect(summary).not.toHaveProperty("status");
+      expect(summary).not.toHaveProperty("password");
+    });
+  });
+
   describe("updateBio", () => {
     it("rejects a dormant caller before writing anything", async () => {
       prisma.user.findFirst.mockResolvedValue({ id: "u1", status: AccountStatus.DORMANT });
