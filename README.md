@@ -47,6 +47,12 @@ pnpm --filter api prisma:migrate   # Prisma 마이그레이션 적용
 pnpm --filter api seed             # 전체 채팅방(isGlobal) row 시드
 ```
 
+공유 타입 패키지 빌드 (최초 1회 필수 — `dev` 서버는 자동으로 빌드해주지 않습니다):
+
+```bash
+pnpm --filter @secondhand/types build
+```
+
 ### 2. 개발 서버 실행
 
 API와 웹은 각자 다른 터미널에서 띄웁니다 (하나가 다른 하나를 자동으로 켜주지 않습니다):
@@ -60,6 +66,8 @@ pnpm --filter web dev     # http://localhost:3000
 ```
 
 브라우저에서 http://localhost:3000 접속 → 회원가입/로그인 → 상품 등록(이미지 업로드까지 포함, MinIO가 켜져 있어야 함) → 채팅/신고까지 전부 이 상태에서 확인 가능합니다.
+
+> **주의:** `packages/types`(`@secondhand/types`)는 소스가 아니라 컴파일된 `dist/`를 통해 소비됩니다. 이 패키지의 타입을 추가/수정한 뒤에는 `pnpm --filter @secondhand/types build`를 다시 실행해야 `apps/api`/`apps/web`에 반영됩니다. 자주 건드린다면 별도 터미널에서 `pnpm --filter @secondhand/types dev`(watch 모드)를 띄워두면 편합니다.
 
 ### 3. 두 번째 실행부터 (재부팅 후 등)
 
@@ -95,6 +103,7 @@ cd apps/api && DATABASE_URL="postgresql://secondhand:secondhand@localhost:5432/s
 | API 개발 서버 | `pnpm --filter api dev` |
 | 웹 개발 서버 | `pnpm --filter web dev` |
 | API 빌드 | `pnpm --filter api build` |
+| 공유 타입 패키지 빌드 (수정 후 필수) | `pnpm --filter @secondhand/types build` |
 | Prisma 마이그레이션 적용 | `pnpm --filter api prisma:migrate` |
 | Prisma Studio (DB GUI) | `pnpm --filter api exec prisma studio` |
 | 관리자 계정 지정 | `pnpm --filter api promote-admin <username>` |
