@@ -83,14 +83,26 @@ pnpm --filter web dev
 
 ```bash
 pnpm --filter api test        # unit 테스트 (mocked Prisma/Redis, DB 불필요)
-pnpm --filter api test:e2e    # e2e 테스트 (실제 Postgres/Redis 필요 — docker compose up 상태여야 함)
 ```
 
-e2e는 dev DB를 건드리지 않도록 별도 테스트 DB를 씁니다. 최초 1회만 준비:
+e2e 테스트(`pnpm --filter api test:e2e`)는 실제 Postgres/Redis가 필요하고(`docker compose up` 상태여야 함), dev DB를 건드리지 않도록 별도 테스트 DB를 씁니다. **최초 1회만** 아래 순서로 준비하세요:
 
 ```bash
+# 1) test DB를 가리키는 .env.test 생성 (gitignore 대상이라 로컬에서 직접 만들어야 함 —
+#    없으면 test:e2e가 .env(dev DB)로 조용히 폴백하니 주의)
+echo 'DATABASE_URL="postgresql://secondhand:secondhand@localhost:5432/secondhand_market_test?schema=public"' > apps/api/.env.test
+
+# 2) test DB 생성
 docker exec secondhand-postgres psql -U secondhand -d postgres -c "CREATE DATABASE secondhand_market_test"
+
+# 3) test DB에 마이그레이션 적용
 cd apps/api && DATABASE_URL="postgresql://secondhand:secondhand@localhost:5432/secondhand_market_test?schema=public" npx prisma migrate deploy
+```
+
+준비가 끝나면 그때부터는 이 명령만 반복하면 됩니다:
+
+```bash
+pnpm --filter api test:e2e
 ```
 
 ### 자주 쓰는 명령 모음
