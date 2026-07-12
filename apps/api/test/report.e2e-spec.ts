@@ -6,6 +6,13 @@ import { createTestApp, cleanDatabase, flushRedis, backdateUser } from "./utils"
 
 const MIN_REPORTER_ACCOUNT_AGE_MS = 10 * 60 * 1000;
 
+// CsrfGuard is a stateless double-submit check (cookie must echo the
+// X-CSRF-Token header) — it doesn't tie the pair to a real session, so
+// these tests can fabricate one instead of going through /auth/login for
+// every reporter (which would burn the 5/min LOGIN_THROTTLE, see
+// signupAndMint below).
+const CSRF_TOKEN = "e2e-test-csrf-token";
+
 describe("Report (e2e) — transactional auto-moderation", () => {
   let app: INestApplication;
   let jwtService: JwtService;
@@ -55,6 +62,8 @@ describe("Report (e2e) — transactional auto-moderation", () => {
 
     await request(server())
       .post("/api/reports")
+      .set("Cookie", `csrfToken=${CSRF_TOKEN}`)
+      .set("x-csrf-token", CSRF_TOKEN)
       .set("Authorization", `Bearer ${reporter.token}`)
       .send({ targetType: ReportTargetType.USER, targetId: target.id })
       .expect(400);
@@ -66,6 +75,8 @@ describe("Report (e2e) — transactional auto-moderation", () => {
 
     await request(server())
       .post("/api/reports")
+      .set("Cookie", `csrfToken=${CSRF_TOKEN}`)
+      .set("x-csrf-token", CSRF_TOKEN)
       .set("Authorization", `Bearer ${reporter.token}`)
       .send({ targetType: ReportTargetType.USER, targetId: target.id, reason: "spam" })
       .expect(403);
@@ -76,12 +87,16 @@ describe("Report (e2e) — transactional auto-moderation", () => {
 
     await request(server())
       .post("/api/reports")
+      .set("Cookie", `csrfToken=${CSRF_TOKEN}`)
+      .set("x-csrf-token", CSRF_TOKEN)
       .set("Authorization", `Bearer ${user.token}`)
       .send({ targetType: ReportTargetType.USER, targetId: user.id, reason: "x" })
       .expect(400);
 
     const product = await request(server())
       .post("/api/products")
+      .set("Cookie", `csrfToken=${CSRF_TOKEN}`)
+      .set("x-csrf-token", CSRF_TOKEN)
       .set("Authorization", `Bearer ${user.token}`)
       .send({
         name: "own product",
@@ -93,6 +108,8 @@ describe("Report (e2e) — transactional auto-moderation", () => {
 
     await request(server())
       .post("/api/reports")
+      .set("Cookie", `csrfToken=${CSRF_TOKEN}`)
+      .set("x-csrf-token", CSRF_TOKEN)
       .set("Authorization", `Bearer ${user.token}`)
       .send({ targetType: ReportTargetType.PRODUCT, targetId: product.body.id, reason: "x" })
       .expect(400);
@@ -104,12 +121,16 @@ describe("Report (e2e) — transactional auto-moderation", () => {
 
     await request(server())
       .post("/api/reports")
+      .set("Cookie", `csrfToken=${CSRF_TOKEN}`)
+      .set("x-csrf-token", CSRF_TOKEN)
       .set("Authorization", `Bearer ${reporter.token}`)
       .send({ targetType: ReportTargetType.USER, targetId: target.id, reason: "spam" })
       .expect(201);
 
     await request(server())
       .post("/api/reports")
+      .set("Cookie", `csrfToken=${CSRF_TOKEN}`)
+      .set("x-csrf-token", CSRF_TOKEN)
       .set("Authorization", `Bearer ${reporter.token}`)
       .send({ targetType: ReportTargetType.USER, targetId: target.id, reason: "spam again" })
       .expect(409);
@@ -125,22 +146,35 @@ describe("Report (e2e) — transactional auto-moderation", () => {
     for (let i = 0; i < 4; i++) {
       await request(server())
         .post("/api/reports")
+        .set("Cookie", `csrfToken=${CSRF_TOKEN}`)
+        .set("x-csrf-token", CSRF_TOKEN)
         .set("Authorization", `Bearer ${reporters[i].token}`)
         .send({ targetType: ReportTargetType.USER, targetId: target.id, reason: `report ${i}` })
         .expect(201);
     }
 
-    const stillActive = await request(server()).get(`/api/users/${target.id}`).expect(200);
+    // The public GET /users/:id route deliberately excludes status/balance/
+    // role (see UserService.getPublicSummary) — /users/me is the only route
+    // that still exposes status, so check it as the target itself.
+    const stillActive = await request(server())
+      .get("/api/users/me")
+      .set("Authorization", `Bearer ${target.token}`)
+      .expect(200);
     expect(stillActive.body.status).toBe("ACTIVE");
 
     // 5th distinct report crosses REPORT_BLOCK_THRESHOLD (5 in .env.test).
     await request(server())
       .post("/api/reports")
+      .set("Cookie", `csrfToken=${CSRF_TOKEN}`)
+      .set("x-csrf-token", CSRF_TOKEN)
       .set("Authorization", `Bearer ${reporters[4].token}`)
       .send({ targetType: ReportTargetType.USER, targetId: target.id, reason: "report 4" })
       .expect(201);
 
-    const nowDormant = await request(server()).get(`/api/users/${target.id}`).expect(200);
+    const nowDormant = await request(server())
+      .get("/api/users/me")
+      .set("Authorization", `Bearer ${target.token}`)
+      .expect(200);
     expect(nowDormant.body.status).toBe("DORMANT");
 
     // The restriction actually takes effect elsewhere in the system too.
@@ -154,6 +188,8 @@ describe("Report (e2e) — transactional auto-moderation", () => {
     const seller = await signupAndMint("productseller", MIN_REPORTER_ACCOUNT_AGE_MS * 2);
     const product = await request(server())
       .post("/api/products")
+      .set("Cookie", `csrfToken=${CSRF_TOKEN}`)
+      .set("x-csrf-token", CSRF_TOKEN)
       .set("Authorization", `Bearer ${seller.token}`)
       .send({
         name: "flagged product",
@@ -170,6 +206,8 @@ describe("Report (e2e) — transactional auto-moderation", () => {
     for (const reporter of reporters) {
       await request(server())
         .post("/api/reports")
+        .set("Cookie", `csrfToken=${CSRF_TOKEN}`)
+        .set("x-csrf-token", CSRF_TOKEN)
         .set("Authorization", `Bearer ${reporter.token}`)
         .send({ targetType: ReportTargetType.PRODUCT, targetId: product.body.id, reason: "fake" })
         .expect(201);
