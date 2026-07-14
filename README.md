@@ -44,8 +44,10 @@ DB 마이그레이션 적용 + 초기 시드:
 
 ```bash
 pnpm --filter api prisma:migrate   # Prisma 마이그레이션 적용
-pnpm --filter api seed             # 전체 채팅방(isGlobal) row 시드
+pnpm --filter api seed             # 전체 채팅방(isGlobal) row + 데모 상품 6개 시드
 ```
+
+데모 상품은 `demo_seller` 계정(`password123`) 소유로 생성됩니다.
 
 공유 타입 패키지 빌드 (최초 1회 필수 — `dev` 서버는 자동으로 빌드해주지 않습니다):
 
