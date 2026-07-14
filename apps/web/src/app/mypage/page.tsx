@@ -65,7 +65,9 @@ export default function MyPage() {
 
   return (
     <div>
-      <h1 style={{ fontSize: 20, fontWeight: 800, marginBottom: 8 }}>마이페이지</h1>
+      <h1 style={{ fontFamily: "var(--font-display)", fontSize: 24, fontWeight: 600, marginBottom: 8 }}>
+        마이페이지
+      </h1>
       <p className={styles.meta}>
         {user.username} · 가입일 {new Date(user.createdAt).toLocaleDateString()}
       </p>

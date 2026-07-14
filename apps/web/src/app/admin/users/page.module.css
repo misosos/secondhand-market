@@ -6,19 +6,21 @@
 
 .tab {
   padding: 7px 16px;
-  border-radius: 999px;
+  border-radius: var(--radius);
   border: 1px solid transparent;
   background: var(--color-bg-elevated);
   color: var(--color-muted);
-  font-size: 13px;
-  font-weight: 590;
+  font-family: var(--font-tag);
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
   cursor: pointer;
-  transition: transform 0.4s var(--spring), background 0.2s ease, color 0.2s ease;
+  transition: transform 0.08s var(--ease-press), background 0.2s ease, color 0.2s ease;
 }
 
 .tab:active {
-  transform: scale(0.95);
-  transition: transform 0.12s var(--ease-press);
+  transform: translateY(1px);
 }
 
 .tabActive {
@@ -38,7 +40,7 @@
   justify-content: space-between;
   align-items: center;
   border: 1px solid var(--color-border);
-  border-radius: 16px;
+  border-radius: var(--radius);
   padding: 14px 16px;
   background: var(--color-surface);
 }
@@ -57,7 +59,7 @@
   font-size: 12px;
   font-weight: 700;
   padding: 2px 8px;
-  border-radius: 999px;
+  border-radius: var(--radius);
   margin-left: 8px;
 }
 

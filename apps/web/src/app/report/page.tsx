@@ -40,7 +40,7 @@ function ReportPageContent() {
 
   return (
     <div style={{ maxWidth: 420 }}>
-      <h1 style={{ fontSize: 20, fontWeight: 800, marginBottom: 16 }}>
+      <h1 style={{ fontFamily: "var(--font-display)", fontSize: 24, fontWeight: 600, marginBottom: 16 }}>
         {targetType === ReportTargetType.USER ? "사용자 신고" : "상품 신고"}
       </h1>
 

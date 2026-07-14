@@ -32,7 +32,9 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
 
   return (
     <div>
-      <h1 style={{ fontSize: 20, fontWeight: 800, marginBottom: 20 }}>상품 수정</h1>
+      <h1 style={{ fontFamily: "var(--font-display)", fontSize: 24, fontWeight: 600, marginBottom: 20 }}>
+        상품 수정
+      </h1>
       <ProductForm
         initialValues={{
           name: product.name,

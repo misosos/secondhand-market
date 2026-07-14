@@ -11,10 +11,21 @@
 }
 
 .mainImageWrap {
+  position: relative;
   aspect-ratio: 1 / 1;
   background: var(--color-bg-elevated);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
   overflow: hidden;
   margin-bottom: 8px;
+}
+
+.statusStamp {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  z-index: 1;
+  background: var(--panel-fill-strong);
 }
 
 .mainImage {
@@ -59,9 +70,14 @@
   margin: 0 0 12px;
 }
 
+/* Itemized-receipt treatment — surface paper with a perforated top edge,
+   not a flat info box. */
 .pricePanel {
-  padding: 16px 18px;
-  background: var(--color-bg-elevated);
+  padding: 18px 18px 14px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  border-top: 3px dashed var(--color-border);
   margin-bottom: 16px;
 }
 
@@ -74,20 +90,22 @@
 }
 
 .priceRow .val {
+  font-family: var(--font-tag);
   font-variant-numeric: tabular-nums;
 }
 
 .priceRowTotal {
   display: flex;
   justify-content: space-between;
-  padding-top: 8px;
+  padding-top: 10px;
   margin-top: 4px;
-  border-top: 1px solid var(--hairline);
+  border-top: 1px dashed var(--color-border);
   font-size: 19px;
   font-weight: 700;
 }
 
 .priceRowTotal .val {
+  font-family: var(--font-tag);
   font-variant-numeric: tabular-nums;
 }
 

@@ -93,8 +93,8 @@ export function ChatWindow({ peerId, peerUsername, onClose }: ChatWindowProps) {
   }
 
   // Portal straight to <body>: this can be opened from inside any card that
-  // happens to have `clip-path` (the shared `squircle` utility class, e.g.
-  // the user profile page) — clip-path establishes a containing block for
+  // happens to have `clip-path` (the shared `tagShape` utility class, e.g.
+  // a price badge) — clip-path establishes a containing block for
   // `position: fixed` descendants same as transform/filter would, which
   // silently shrank this overlay down to that card's box instead of the
   // viewport. Escaping to `document.body` makes the overlay immune to

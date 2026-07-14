@@ -18,7 +18,9 @@ export default function MyTransactionsPage() {
 
   return (
     <div>
-      <h1 style={{ fontSize: 20, fontWeight: 800, marginBottom: 8 }}>거래 내역</h1>
+      <h1 style={{ fontFamily: "var(--font-display)", fontSize: 24, fontWeight: 600, marginBottom: 8 }}>
+        거래 내역
+      </h1>
       <p style={{ color: "var(--color-muted)", fontSize: 13, marginBottom: 20 }}>
         현재 잔액: {user.balance.toLocaleString()}원
       </p>

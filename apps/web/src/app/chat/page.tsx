@@ -22,7 +22,7 @@ export default function ChatListPage() {
 
   return (
     <div>
-      <h1 style={{ fontSize: 20, fontWeight: 800, marginBottom: 16 }}>채팅</h1>
+      <h1 style={{ fontFamily: "var(--font-display)", fontSize: 24, fontWeight: 600, marginBottom: 16 }}>채팅</h1>
 
       <ErrorMessage>{error}</ErrorMessage>
       {isLoading && <Spinner />}

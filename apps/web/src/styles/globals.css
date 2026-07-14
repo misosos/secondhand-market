@@ -1,99 +1,109 @@
 :root {
-  /* Apple system palette — light by default, true-black dark variant.
-     Text/UI weight does the hierarchy work, not extra color. */
-  --color-bg: #fbfbfd;
-  --color-bg-elevated: #f5f5f7;
-  --color-surface: #ffffff;
-  --color-border: rgba(0, 0, 0, 0.08);
-  --color-text: #1d1d1f;
-  --color-muted: #6e6e73;
-  --color-primary: #0071e3;
-  --color-primary-hover: #0060c0;
-  --color-accent-secondary: #1d7a46;
-  --color-danger: #d70015;
-  --color-danger-bg: rgba(215, 0, 21, 0.08);
+  /* "가격표를 다시 쓰다" — secondhand-market palette built from swing tags,
+     stamped grades, and worn paper, not the Apple system palette this
+     replaced. Named tokens keep the source material legible in code. */
+  --color-ink: #23261f;
+  --color-paper: #e4e1d6;
+  --color-surface: #faf9f4;
+  --color-stamp-red: #c8402a;
+  --color-tag-yellow: #dda92e;
+  --color-denim: #48586b;
 
-  --panel-fill: rgba(255, 255, 255, 0.72);
-  --panel-fill-strong: rgba(255, 255, 255, 0.86);
-  --panel-border: rgba(255, 255, 255, 0.5);
-  --hairline: rgba(0, 0, 0, 0.08);
-  --shadow-ambient: rgba(0, 0, 0, 0.12);
+  --color-bg: var(--color-paper);
+  --color-bg-elevated: #dad6c8;
+  --color-border: rgba(35, 38, 31, 0.16);
+  --color-text: var(--color-ink);
+  --color-muted: #6b6a5c;
+  --color-primary: var(--color-denim);
+  --color-primary-hover: #354251;
+  --color-accent-secondary: #4f6b3f;
+  --color-danger: var(--color-stamp-red);
+  --color-danger-bg: rgba(200, 64, 42, 0.1);
 
-  /* Message bubble fill — deliberately its own token rather than reusing
-     --color-bg-elevated: a chat panel's background IS --color-bg-elevated
-     in places (see ChatWindow/global chat panel), so bubbles need a shade
-     that's guaranteed to read against either surface, not just whichever
-     one happened to be behind them. Matches iMessage's actual incoming-
-     bubble grey. */
-  --color-bubble-incoming: #e9e9eb;
+  --panel-fill: rgba(250, 249, 244, 0.88);
+  --panel-fill-strong: rgba(250, 249, 244, 0.96);
+  --panel-border: rgba(35, 38, 31, 0.12);
+  --hairline: rgba(35, 38, 31, 0.16);
+  --shadow-ambient: rgba(35, 38, 31, 0.18);
 
-  --font-body: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", Arial, "Noto Sans KR", sans-serif;
-  --font-display: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Helvetica Neue", Arial, "Noto Sans KR", sans-serif;
-  --font-tag: ui-monospace, "SF Mono", Menlo, monospace;
+  /* Message bubble fill — its own token since a chat panel's background IS
+     --color-bg-elevated in places (see ChatWindow), so bubbles need a shade
+     guaranteed to read against either surface. */
+  --color-bubble-incoming: #cfccbd;
 
-  --spring: cubic-bezier(0.32, 1.5, 0.36, 1);
+  --font-body: var(--font-body-face), "Pretendard", "Noto Sans KR", sans-serif;
+  --font-display: var(--font-display-face), "Pretendard", "Noto Sans KR", sans-serif;
+  --font-tag: var(--font-tag-face), ui-monospace, "SF Mono", Menlo, monospace;
+
+  --spring: cubic-bezier(0.32, 1.3, 0.36, 1);
   --spring-soft: cubic-bezier(0.22, 1, 0.36, 1);
   --ease-press: cubic-bezier(0.4, 0, 1, 1);
 
-  --radius: 16px;
+  --radius: 3px;
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --color-bg: #000000;
-    --color-bg-elevated: #161617;
-    --color-surface: #1d1d1f;
-    --color-border: rgba(255, 255, 255, 0.14);
-    --color-text: #f5f5f7;
-    --color-muted: #86868b;
-    --color-primary: #2997ff;
-    --color-primary-hover: #62b4ff;
-    --color-danger: #ff453a;
-    --color-danger-bg: rgba(255, 69, 58, 0.14);
+    --color-ink: #ece7d9;
+    --color-paper: #201f19;
+    --color-surface: #29281f;
+    --color-bg: var(--color-paper);
+    --color-bg-elevated: #322f24;
+    --color-border: rgba(236, 231, 217, 0.16);
+    --color-text: var(--color-ink);
+    --color-muted: #a19d89;
+    --color-primary: #8fa3bd;
+    --color-primary-hover: #b0c1d6;
+    --color-danger: #e2694f;
+    --color-danger-bg: rgba(226, 105, 79, 0.16);
 
-    --panel-fill: rgba(29, 29, 31, 0.62);
-    --panel-fill-strong: rgba(29, 29, 31, 0.78);
-    --panel-border: rgba(255, 255, 255, 0.12);
-    --hairline: rgba(255, 255, 255, 0.14);
+    --panel-fill: rgba(41, 40, 31, 0.82);
+    --panel-fill-strong: rgba(41, 40, 31, 0.94);
+    --panel-border: rgba(236, 231, 217, 0.14);
+    --hairline: rgba(236, 231, 217, 0.16);
     --shadow-ambient: rgba(0, 0, 0, 0.55);
-    --color-bubble-incoming: #3a3a3c;
+    --color-bubble-incoming: #3a3829;
   }
 }
 :root[data-theme="dark"] {
-  --color-bg: #000000;
-  --color-bg-elevated: #161617;
-  --color-surface: #1d1d1f;
-  --color-border: rgba(255, 255, 255, 0.14);
-  --color-text: #f5f5f7;
-  --color-muted: #86868b;
-  --color-primary: #2997ff;
-  --color-primary-hover: #62b4ff;
-  --color-danger: #ff453a;
-  --color-danger-bg: rgba(255, 69, 58, 0.14);
-  --panel-fill: rgba(29, 29, 31, 0.62);
-  --panel-fill-strong: rgba(29, 29, 31, 0.78);
-  --panel-border: rgba(255, 255, 255, 0.12);
-  --hairline: rgba(255, 255, 255, 0.14);
+  --color-ink: #ece7d9;
+  --color-paper: #201f19;
+  --color-surface: #29281f;
+  --color-bg: var(--color-paper);
+  --color-bg-elevated: #322f24;
+  --color-border: rgba(236, 231, 217, 0.16);
+  --color-text: var(--color-ink);
+  --color-muted: #a19d89;
+  --color-primary: #8fa3bd;
+  --color-primary-hover: #b0c1d6;
+  --color-danger: #e2694f;
+  --color-danger-bg: rgba(226, 105, 79, 0.16);
+  --panel-fill: rgba(41, 40, 31, 0.82);
+  --panel-fill-strong: rgba(41, 40, 31, 0.94);
+  --panel-border: rgba(236, 231, 217, 0.14);
+  --hairline: rgba(236, 231, 217, 0.16);
   --shadow-ambient: rgba(0, 0, 0, 0.55);
-  --color-bubble-incoming: #3a3a3c;
+  --color-bubble-incoming: #3a3829;
 }
 :root[data-theme="light"] {
-  --color-bg: #fbfbfd;
-  --color-bg-elevated: #f5f5f7;
-  --color-surface: #ffffff;
-  --color-border: rgba(0, 0, 0, 0.08);
-  --color-text: #1d1d1f;
-  --color-muted: #6e6e73;
-  --color-primary: #0071e3;
-  --color-primary-hover: #0060c0;
-  --color-danger: #d70015;
-  --color-danger-bg: rgba(215, 0, 21, 0.08);
-  --panel-fill: rgba(255, 255, 255, 0.72);
-  --panel-fill-strong: rgba(255, 255, 255, 0.86);
-  --panel-border: rgba(255, 255, 255, 0.5);
-  --hairline: rgba(0, 0, 0, 0.08);
-  --shadow-ambient: rgba(0, 0, 0, 0.12);
-  --color-bubble-incoming: #e9e9eb;
+  --color-ink: #23261f;
+  --color-paper: #e4e1d6;
+  --color-surface: #faf9f4;
+  --color-bg: var(--color-paper);
+  --color-bg-elevated: #dad6c8;
+  --color-border: rgba(35, 38, 31, 0.16);
+  --color-text: var(--color-ink);
+  --color-muted: #6b6a5c;
+  --color-primary: var(--color-denim);
+  --color-primary-hover: #354251;
+  --color-danger: var(--color-stamp-red);
+  --color-danger-bg: rgba(200, 64, 42, 0.1);
+  --panel-fill: rgba(250, 249, 244, 0.88);
+  --panel-fill-strong: rgba(250, 249, 244, 0.96);
+  --panel-border: rgba(35, 38, 31, 0.12);
+  --hairline: rgba(35, 38, 31, 0.16);
+  --shadow-ambient: rgba(35, 38, 31, 0.18);
+  --color-bubble-incoming: #cfccbd;
 }
 
 * {
@@ -131,29 +141,67 @@ textarea {
   padding: 0 22px;
 }
 
-/* Liquid glass — reserved for floating layers (nav, sheets, overlays), never
-   for the product information itself; see design guideline principle 3. */
+/* Frosted panel — reserved for floating layers (nav, sheets, overlays),
+   never for the product information itself; see design guideline principle 3. */
 .glass {
   background: var(--panel-fill);
   border: 1px solid var(--panel-border);
-  backdrop-filter: blur(20px) saturate(180%);
-  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  backdrop-filter: blur(16px) saturate(140%);
+  -webkit-backdrop-filter: blur(16px) saturate(140%);
 }
 
-/* True squircle via the superellipse clip-path defined once in layout.tsx.
-   Scales to whatever box it's applied to. */
-.squircle {
-  clip-path: url(#squircle);
+/* Swing-tag silhouette via the clip-path defined once in layout.tsx.
+   Scales to whatever box it's applied to — used for price badges and
+   status labels, never for photos (see design guideline: photos stay
+   plain rectangles so the tag shape reads as an object placed on top). */
+.tagShape {
+  clip-path: url(#tag);
 }
 
 .tag {
   font-family: var(--font-tag);
   font-variant-numeric: tabular-nums;
 }
+
+/* Price badge — the recurring signature: a physical swing tag with a
+   punched hole, fixed yellow/ink regardless of theme (a tag looks the same
+   in a lit or dark room). Left padding clears the notch + hole so digits
+   never sit inside the clip. */
+.priceTag {
+  display: inline-flex;
+  align-items: center;
+  font-family: var(--font-tag);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  background: #dda92e;
+  color: #23261f;
+  padding: 5px 12px 5px 20px;
+  clip-path: url(#tag);
+}
+
 .eyebrow {
   font-size: 13px;
   font-weight: 600;
   color: var(--color-primary);
+}
+
+/* Rubber-stamp badge — condition grades, status labels (판매중/예약중/...),
+   admin decisions. `color` sets the ink; background stays transparent so it
+   reads as stamped onto the surface beneath it, not a filled chip. */
+.stamp {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-family: var(--font-tag);
+  font-weight: 700;
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  padding: 3px 9px;
+  border: 1.5px solid currentColor;
+  border-radius: 999px;
+  transform: rotate(-2deg);
+  white-space: nowrap;
 }
 
 /* Card → detail morph (see lib/viewTransition.ts). */

@@ -39,7 +39,7 @@ export default function MyProductsPage() {
   return (
     <div>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
-        <h1 style={{ fontSize: 20, fontWeight: 800 }}>내 상품 관리</h1>
+        <h1 style={{ fontFamily: "var(--font-display)", fontSize: 24, fontWeight: 600 }}>내 상품 관리</h1>
         <Link href="/products/new">
           <Button variant="secondary" icon={Plus}>상품 등록</Button>
         </Link>
@@ -58,11 +58,11 @@ export default function MyProductsPage() {
           const canOpen = product.status !== ProductStatus.BLOCKED;
 
           return (
-            <div key={product.id} className={`${styles.card} squircle`}>
+            <div key={product.id} className={styles.card}>
               {canOpen ? (
                 <Link href={`/products/${product.id}`} className={styles.thumbnailLink}>
                   <div className={styles.thumbnailWrap}>
-                    {statusLabel && <span className={styles.statusBadge}>{statusLabel}</span>}
+                    {statusLabel && <span className={`stamp ${styles.statusBadge}`}>{statusLabel}</span>}
                     {product.thumbnailUrl ? (
                       <img className={styles.thumbnail} src={product.thumbnailUrl} alt={product.name} />
                     ) : (
@@ -72,7 +72,7 @@ export default function MyProductsPage() {
                 </Link>
               ) : (
                 <div className={styles.thumbnailWrap}>
-                  {statusLabel && <span className={styles.statusBadge}>{statusLabel}</span>}
+                  {statusLabel && <span className={`stamp ${styles.statusBadge}`}>{statusLabel}</span>}
                   {product.thumbnailUrl ? (
                     <img className={styles.thumbnail} src={product.thumbnailUrl} alt={product.name} />
                   ) : (
@@ -83,7 +83,7 @@ export default function MyProductsPage() {
 
               <div className={styles.body}>
                 <p className={styles.name}>{product.name}</p>
-                <p className={styles.price}>{product.price.toLocaleString()}원</p>
+                <p className={`priceTag ${styles.price}`}>{product.price.toLocaleString()}원</p>
                 <div className={styles.actions}>
                   {canOpen && (
                     <Link href={`/products/${product.id}/edit`}>

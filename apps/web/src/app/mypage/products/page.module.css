@@ -9,12 +9,14 @@
   flex-direction: column;
   background: var(--color-surface);
   border: 1px solid var(--color-border);
+  border-radius: var(--radius);
   overflow: hidden;
-  transition: transform 0.45s var(--spring);
+  transition: transform 0.2s var(--ease-press), border-color 0.2s ease;
 }
 
 .card:hover {
-  transform: scale(1.015);
+  transform: translateY(-3px);
+  border-color: var(--color-ink);
 }
 
 .thumbnailLink {
@@ -50,12 +52,8 @@
   position: absolute;
   top: 8px;
   left: 8px;
-  font-size: 11px;
-  font-weight: 700;
-  padding: 2px 8px;
-  border-radius: 999px;
-  background: rgba(0, 0, 0, 0.65);
-  color: #fff;
+  background: var(--panel-fill-strong);
+  color: var(--color-danger);
 }
 
 .body {
@@ -72,7 +70,7 @@
 
 .price {
   margin: 0 0 10px;
-  font-weight: 700;
+  font-size: 0.85rem;
 }
 
 .actions {

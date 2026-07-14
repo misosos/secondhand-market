@@ -21,7 +21,9 @@ export default function NewProductPage() {
 
   return (
     <div>
-      <h1 style={{ fontSize: 20, fontWeight: 800, marginBottom: 20 }}>상품 등록</h1>
+      <h1 style={{ fontFamily: "var(--font-display)", fontSize: 24, fontWeight: 600, marginBottom: 20 }}>
+        상품 등록
+      </h1>
       <ProductForm onSubmit={handleSubmit} submitLabel="등록하기" />
     </div>
   );

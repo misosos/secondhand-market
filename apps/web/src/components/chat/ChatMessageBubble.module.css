@@ -19,13 +19,19 @@
   margin-bottom: 2px;
 }
 
+/* A torn-off paper note rather than an iMessage-style pill — small,
+   slightly asymmetric corners instead of a fully rounded capsule. */
 .bubble {
   background: var(--color-bubble-incoming);
   color: var(--color-text);
-  border-radius: 18px;
+  border-radius: 3px 8px 8px 8px;
   padding: 8px 14px;
   font-size: 14px;
   overflow-wrap: anywhere;
+}
+
+.own .bubble {
+  border-radius: 8px 3px 8px 8px;
 }
 
 .own .bubble {
@@ -39,7 +45,7 @@
   gap: 8px;
   background: var(--color-accent-secondary);
   color: #fff;
-  border-radius: 18px;
+  border-radius: 8px;
   padding: 10px 16px;
   font-size: 14px;
   font-weight: 700;
@@ -65,7 +71,7 @@
   align-items: center;
   gap: 4px;
   border: none;
-  border-radius: 999px;
+  border-radius: var(--radius);
   padding: 6px 14px;
   font-size: 13px;
   font-weight: 700;

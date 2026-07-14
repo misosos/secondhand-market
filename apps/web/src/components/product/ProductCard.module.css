@@ -4,14 +4,16 @@
   color: inherit;
   background: var(--color-surface);
   border: 1px solid var(--color-border);
+  border-radius: var(--radius);
   overflow: hidden;
-  transition: transform 0.45s var(--spring), box-shadow 0.45s var(--spring-soft);
+  transition: transform 0.2s var(--ease-press), box-shadow 0.3s var(--spring-soft), border-color 0.2s ease;
 }
 
 .card:hover,
 .card:focus-visible {
-  transform: scale(1.015);
-  box-shadow: 0 20px 40px -22px var(--shadow-ambient);
+  transform: translateY(-3px);
+  border-color: var(--color-ink);
+  box-shadow: 0 10px 22px -14px var(--shadow-ambient);
 }
 .card:focus-visible {
   outline: 2px solid var(--color-primary);
@@ -19,9 +21,18 @@
 }
 
 .thumbnailWrap {
+  position: relative;
   aspect-ratio: 1 / 1;
   background: var(--color-bg-elevated);
   overflow: hidden;
+}
+
+.soldStamp {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  background: var(--panel-fill-strong);
+  color: var(--color-danger);
 }
 
 .thumbnail {
@@ -60,9 +71,10 @@
   font-weight: 700;
 }
 
+/* Sizing/position only — weight, family, and color come from the global
+   .priceTag class (see globals.css) so there's one place that owns the
+   look of a price, not two rules fighting over it. */
 .price {
-  margin: 0;
-  font-weight: 590;
-  font-size: 0.95rem;
-  font-variant-numeric: tabular-nums;
+  margin: 2px 0 0;
+  font-size: 0.85rem;
 }

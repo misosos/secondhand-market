@@ -3,12 +3,14 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import type { MouseEvent } from "react";
+import { ProductStatus } from "@secondhand/types";
 import type { ProductSummary } from "@secondhand/types";
 import { navigateWithMorph, prefersReducedMotion, supportsViewTransitions } from "@/lib/viewTransition";
 import styles from "./ProductCard.module.css";
 
 export function ProductCard({ product }: { product: ProductSummary }) {
   const router = useRouter();
+  const isSold = product.status === ProductStatus.SOLD;
 
   function handleClick(event: MouseEvent<HTMLAnchorElement>) {
     if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
@@ -18,7 +20,7 @@ export function ProductCard({ product }: { product: ProductSummary }) {
   }
 
   return (
-    <Link href={`/products/${product.id}`} className={`${styles.card} squircle`} onClick={handleClick}>
+    <Link href={`/products/${product.id}`} className={styles.card} onClick={handleClick}>
       <div
         className={styles.thumbnailWrap}
         style={{ viewTransitionName: `product-thumb-${product.id}` } as React.CSSProperties}
@@ -32,6 +34,7 @@ export function ProductCard({ product }: { product: ProductSummary }) {
         ) : (
           <div className={styles.thumbnailPlaceholder}>No Image</div>
         )}
+        {isSold && <span className={`stamp ${styles.soldStamp}`}>판매완료</span>}
       </div>
       <div className={styles.body}>
         <p
@@ -40,7 +43,7 @@ export function ProductCard({ product }: { product: ProductSummary }) {
         >
           {product.name}
         </p>
-        <p className={styles.price}>{product.price.toLocaleString()}원</p>
+        <p className={`priceTag ${styles.price}`}>{product.price.toLocaleString()}원</p>
       </div>
     </Link>
   );

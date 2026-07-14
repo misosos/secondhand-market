@@ -8,24 +8,10 @@
   padding-right: calc(50vw - 50%);
   margin-top: -24px;
   margin-bottom: 40px;
-  padding-top: 88px;
-  padding-bottom: 44px;
+  padding-top: 72px;
+  padding-bottom: 48px;
   background: var(--color-bg);
-  border-bottom: 1px solid var(--hairline);
-}
-
-/* Soft brand-colored glow behind the headline — just enough depth to keep
-   the hero from reading as flat text-on-background, still restrained
-   enough to not compete with the product grid below. */
-.heroGlow {
-  position: absolute;
-  top: -160px;
-  left: 50%;
-  width: 900px;
-  height: 500px;
-  transform: translateX(-58%);
-  background: radial-gradient(closest-side, color-mix(in srgb, var(--color-primary) 16%, transparent), transparent);
-  pointer-events: none;
+  border-bottom: 1.5px solid var(--color-ink);
 }
 
 .heroInner {
@@ -34,44 +20,65 @@
   width: 100%;
   margin: 0 auto;
   padding: 0 22px;
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  gap: 32px;
+}
+
+@media (max-width: 720px) {
+  .heroInner {
+    grid-template-columns: 1fr;
+  }
+}
+
+.heroText {
   display: flex;
   flex-direction: column;
   gap: 14px;
+  min-width: 0;
 }
 
 .heroBrand {
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  font-size: 13px;
-  font-weight: 600;
+  font-family: var(--font-tag);
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
   color: var(--color-primary);
 }
 
 .heroHeadline {
   font-family: var(--font-display);
-  font-weight: 300;
-  font-size: clamp(2.2rem, 5.4vw, 3.8rem);
-  line-height: 1.05;
-  letter-spacing: -0.025em;
+  font-weight: 500;
+  font-size: clamp(2.4rem, 5.6vw, 4rem);
+  line-height: 1.02;
+  letter-spacing: -0.01em;
   margin: 0;
 }
 
 .heroHeadline b {
   font-weight: 700;
+  text-decoration: underline;
+  text-decoration-color: var(--color-tag-yellow);
+  text-decoration-thickness: 0.1em;
+  text-underline-offset: 0.06em;
 }
 
 .heroSub {
   color: var(--color-muted);
   max-width: 30rem;
-  font-size: clamp(1rem, 1.6vw, 1.15rem);
+  font-size: clamp(1rem, 1.6vw, 1.1rem);
   letter-spacing: -0.005em;
 }
 
 .toolbar {
   display: flex;
   gap: 10px;
-  margin-top: 10px;
+  margin-top: 6px;
   max-width: 640px;
   flex-wrap: wrap;
 }
@@ -84,7 +91,7 @@
 
 .searchIcon {
   position: absolute;
-  left: 16px;
+  left: 14px;
   top: 50%;
   transform: translateY(-50%);
   color: var(--color-muted);
@@ -93,8 +100,8 @@
 
 .searchInput {
   width: 100%;
-  padding: 11px 16px 11px 40px;
-  border-radius: 980px;
+  padding: 11px 16px 11px 38px;
+  border-radius: var(--radius);
   border: 1px solid var(--color-border);
   background: var(--color-surface);
   color: var(--color-text);
@@ -102,4 +109,53 @@
 
 .searchInput::placeholder {
   color: var(--color-muted);
+}
+
+/* The signature element: a large swing tag with the old price struck
+   through and the new one written in below — "쓰던 물건에, 새 가격표를"
+   made into an object instead of just a headline. Hidden below the
+   breakpoint where the hero stacks single-column, since at that width it
+   would sit awkwardly under the search form rather than beside the text. */
+.heroTag {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  width: 190px;
+  padding: 22px 18px 16px 34px;
+  background: var(--color-tag-yellow);
+  color: var(--color-ink);
+  transform: rotate(-4deg);
+  box-shadow: 0 16px 30px -18px var(--shadow-ambient);
+}
+
+.heroTagOld {
+  font-family: var(--font-tag);
+  font-size: 15px;
+  font-weight: 600;
+  text-decoration: line-through;
+  text-decoration-color: var(--color-stamp-red);
+  text-decoration-thickness: 0.12em;
+  opacity: 0.65;
+}
+
+.heroTagNew {
+  font-family: var(--font-tag);
+  font-size: 30px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+
+.heroTagLabel {
+  margin-top: 6px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
+@media (max-width: 720px) {
+  .heroTag {
+    display: none;
+  }
 }

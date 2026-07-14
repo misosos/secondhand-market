@@ -61,9 +61,19 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
     <div className={styles.layout}>
       <div>
         <div
-          className={`${styles.mainImageWrap} squircle`}
+          className={styles.mainImageWrap}
           style={{ viewTransitionName: `product-thumb-${product.id}` } as React.CSSProperties}
         >
+          {product.status !== ProductStatus.ACTIVE && (
+            <span
+              className={`stamp ${styles.statusStamp}`}
+              style={{
+                color: product.status === ProductStatus.SOLD ? "var(--color-danger)" : "var(--color-muted)",
+              }}
+            >
+              {product.status === ProductStatus.SOLD ? "판매완료" : "비공개"}
+            </span>
+          )}
           {product.images[activeImage] && (
             <img className={styles.mainImage} src={product.images[activeImage].url} alt={product.name} />
           )}
@@ -91,7 +101,7 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
           {product.name}
         </h1>
 
-        <div className={`${styles.pricePanel} squircle`}>
+        <div className={styles.pricePanel}>
           <div className={styles.priceRow}>
             <span>상품가</span>
             <span className={styles.val}>{product.price.toLocaleString()}원</span>

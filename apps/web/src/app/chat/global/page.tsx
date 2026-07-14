@@ -35,7 +35,9 @@ export default function GlobalChatPage() {
 
   return (
     <div>
-      <h1 style={{ fontSize: 20, fontWeight: 800, marginBottom: 12 }}>전체 채팅</h1>
+      <h1 style={{ fontFamily: "var(--font-display)", fontSize: 24, fontWeight: 600, marginBottom: 12 }}>
+        전체 채팅
+      </h1>
 
       <div className={styles.panel}>
         <div className={styles.messages}>

@@ -48,7 +48,9 @@ export default function AdminReportsPage() {
 
   return (
     <div>
-      <h1 style={{ fontSize: 20, fontWeight: 800, marginBottom: 16 }}>신고 관리</h1>
+      <h1 style={{ fontFamily: "var(--font-display)", fontSize: 24, fontWeight: 600, marginBottom: 16 }}>
+        신고 관리
+      </h1>
       <AdminSectionNav />
 
       <div className={styles.tabs}>
